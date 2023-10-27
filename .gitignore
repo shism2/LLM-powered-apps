@@ -160,12 +160,3 @@ cython_debug/
 #.idea/
 
 
-# Custom
-RAG/chatbot/chunks/
-RAG/chatbot/documents/
-RAG/chatbot/metadata/
-RAG/chatbot/sources/
-RAG/chatbot/vectorstores/
-*.log
-# *.ipynb
-RAG/chatbot/execution_command.txt
