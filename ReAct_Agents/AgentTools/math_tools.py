@@ -1,7 +1,6 @@
 import os
 import load_envs
 from langchain.utilities import WolframAlphaAPIWrapper
-from typing import Type
 from langchain.agents import Tool
 
 
@@ -9,7 +8,7 @@ from langchain.agents import Tool
 Wolfram API tool
 https://www.wolframalpha.com/
 '''
-def GetFromWolfram():
+def GetFromWolfram()-> Tool:
     wolf = WolframAlphaAPIWrapper()
     tool = Tool(
         name="Get_from_Wolfram",

@@ -20,7 +20,7 @@ class GetFromDatetimeModule(StructuredTool):
  Only use this function for the current time.'''
     args_schema : Type[GetFromDatetimeModuleArgs] = GetFromDatetimeModuleArgs
 
-    def _run(self, IANA_timezone: str)-> str:
+    def _run(self, IANA_timezone: str='Asia/Seoul')-> str:
         tz = pytz.timezone(IANA_timezone)  
         dt = datetime.datetime.now(tz)  
         return f"year-month-day: {dt.year}-{dt.month}-{dt.day}, hour-minute: {dt.hour}-{dt.minute}"

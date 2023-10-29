@@ -26,7 +26,7 @@ class GetFromOpenWeatherMap(StructuredTool):
  This functon CANNOT provide historical weather data.'''
     args_schema : Type[GetFromOpenWeatherMapArgs] = GetFromOpenWeatherMapArgs
 
-    def _run(self, IANA_timezone: str, Days_from_now: int)-> str:
+    def _run(self, IANA_timezone: str='Asia/Seoul', Days_from_now: int=0)-> str:
         WEATHER_API_KEY = os.getenv('OPENWEATHERMAP_API_KEY')
         region = IANA_timezone.split('/')[-1] if '/' in IANA_timezone else IANA_timezone  
         region = (requests.get(f"http://api.openweathermap.org/geo/1.0/direct?q={region}&limit={1}&appid={WEATHER_API_KEY}").json())[0]
@@ -53,5 +53,5 @@ class GetFromOpenWeatherMap(StructuredTool):
         else:
             return f"year-month-day: {dt.year}-{dt.month}-{dt.day}, temperature: {temperature}, humidity: {humidity}, wind_speed: {wind_speed}, weather_summary: {weather_summary}."
 
-    async def _arun(self, IANA_timezone: str, Days_from_now: int)-> str:
+    async def _arun(self, IANA_timezone: str, Days_from_now: int=0)-> str:
         raise NotImplementedError("Does not support async operation yet.")
