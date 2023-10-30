@@ -1,14 +1,12 @@
 # LLM-powered-apps  
   
-Welcome to the LLM-powered-apps repository. For the time being, this repository contains two main projects: **ReAct_Agents** and **Custom_Prompts**.  
+Welcome to the LLM-powered-apps repository. For the time being, this repository contains two main projects: **Agent_Based_LLM_Apps** and **Custom_Prompts**.  
   
 ## Projects  
   
-### ReAct_Agents  
+### Agent_Based_LLM_Apps  
   
-ReAct_Agents is a LangChain-based chatbot application, theoretically based on ReAct (For more details, check out [here](https://react-lm.github.io/)) and RAG (Retrieval augmented generation. You can find more about it [here](https://arxiv.org/abs/2005.11401)).  
-  
-It supports various Language Models (LLMs) ranging from GPT to other open-source LLMs, and it provides a nice GUI interface for users. Recently, we added the support for [OpenAI Functions](https://openai.com/blog/function-calling-and-other-api-updates).  
+Agent_Based_LLM_Apps aims at developing LLM applications based on the concept of 'agents'. It ranges from a simple conversation agent to more complicated agents such as retrieval agents, generative agents.   
   
 ### Custom_Prompts  
   

@@ -1,6 +1,6 @@
-# Agent-based llm Applications  
+# Agent-based LLM Applications  
   
-Welcome to the repository for "Agent-based llm Applications". Here, the term 'agent' signifies a mechanism in the llm-application context where the process sequence is not hard-coded by the developer but rather determined by llms. This repository primarily aims at developing and sharing agent-based llm applications for educational purposes, particularly for beginners. We are committed to sharing source codes and continually adding more advanced agent-based applications.  
+Welcome to the repository for Agent-based LLM Applications. Here, the term 'agent' signifies a mechanism in the llm-application context where the process sequence is not hard-coded by the developer but rather determined by llms. This repository primarily aims at developing and sharing agent-based llm applications for educational purposes, particularly for beginners. We are committed to sharing source codes and continually adding more advanced agent-based applications.  
   
 ## Current Applications  
   
@@ -32,6 +32,5 @@ This project is open-source and freely available under the [MIT License](LICENSE
   
 ## Contact  
   
-If you have any questions or comments, please don't hesitate to reach out. We are always looking to improve and welcome any feedback.   
+If you have any questions or comments, please don't hesitate to reach out to jetleee.1888@gmail.com. We are always looking to improve and welcome any feedback.   
   
-Thank you for visiting our repository!  
