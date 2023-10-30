@@ -20,12 +20,13 @@ parser.add_argument("--verbose", type=agent_enums.Boolean, choices=list(agent_en
 parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent_enums.Search), default=agent_enums.Search.YDC)
 parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')
 parser.add_argument("--scratchpad_log_folder", type=str, default='loggers/scratchpad_logs')
+parser.add_argument("--streaming", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
 args = parser.parse_args()
 
 ## Create objects
 config = Configurations(**vars(args))
 folder_existence_check(config)
-llms = [AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0)]    
+llms = [AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0, streaming=config.streaming.value)]    
 agents = [ReActAgent(llms[0], config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
@@ -65,7 +66,7 @@ def agent_type_change(agent_type):
         elif agent_type == 'ReAct':
             config.agent_type = agent_enums.Agentype.react
             gr.Info("Agent type chaged to ReAct. All chat history is deleted.")
-        llms[0] = AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0)     
+        llms[0] = AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0, streaming=config.streaming.value)     
         agents[0] = ReActAgent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -85,8 +86,8 @@ def reset_system_msg_func():
 
 
 ## Gradio blcok
-with gr.Blocks(title='Smart Agent') as demo:  
-    gr.Markdown(f"# Agent-based chatbot by GURU")  
+with gr.Blocks(title='Conversational Agent') as demo:  
+    gr.Markdown(f"# Conversational Agent")  
     with gr.Row():
         agent_type_btn = gr.Radio(["OpenAI Functions", "ReAct"], label="Agent type", value="OpenAI Functions", interactive=True)
         llm_btn = gr.Radio(["gpt-3.5", "gpt-4", "llama2-7b", "llama2-13b"], label="LLM", value="gpt-4", interactive=False)
