@@ -1,3 +1,4 @@
+import os
 from pydantic import BaseModel, Field
 from agent_enums import Search, RetriecalChainType, AzureDeploymentName, Boolean, Agentype
 
@@ -11,3 +12,8 @@ class Configurations(BaseModel):
     qna_log_folder:str = Field(default='loggers/qna_logs', description="folder qna logs are stored")
     scratchpad_log_folder:str = Field(default='loggers/scratchpad_logs', description="folder agent's intermediate-step logs are stored")
 
+
+def folder_existence_check(config: Configurations)-> None:
+    for k, v in config:
+        if (k.split('_folder')[-1]=='') and (not os.path.exists(v)):
+            os.makedirs(v)  

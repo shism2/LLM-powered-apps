@@ -10,3 +10,4 @@ class SimpleListChatMemory:
 
     def clear_memory(self):
         self.chat_history = list()
+        return self.chat_history

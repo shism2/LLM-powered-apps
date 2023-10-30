@@ -13,6 +13,6 @@ def GetFromWolfram()-> Tool:
     tool = Tool(
         name="Get_from_Wolfram",
         func=wolf.run,
-        description="useful for when you need to answer questions about math"
+        description="Useful for when you need to answer questions about math that you can't solve with Python_REPL"
     )
     return tool
