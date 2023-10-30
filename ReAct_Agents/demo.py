@@ -86,7 +86,7 @@ def reset_system_msg_func():
 
 ## Gradio blcok
 with gr.Blocks(title='Smart Agent') as demo:  
-    gr.Markdown(f"# Agent-based chatbot")  
+    gr.Markdown(f"# Agent-based chatbot by GURU")  
     with gr.Row():
         agent_type_btn = gr.Radio(["OpenAI Functions", "ReAct"], label="Agent type", value="OpenAI Functions", interactive=True)
         llm_btn = gr.Radio(["gpt-3.5", "gpt-4", "llama2-7b", "llama2-13b"], label="LLM", value="gpt-4", interactive=False)
@@ -124,7 +124,7 @@ with gr.Blocks(title='Smart Agent') as demo:
                 clr_screen = gr.Button("Clear screen")
             with gr.Row(): 
                 gr.Examples(
-                    examples=["지금 몇시야?", "지금 뉴욕 날씨 어때?", "BTS의 최연장자의 나이를 log_10()에 넣으면 답이 뭐야?", 
+                    examples=["지금 몇시야?", "지금 뉴욕 날씨 어때?", "현재 기준으로 BTS의 최연장자의 나이를 log_10()에 넣으면 답이 뭐야?", 
                     "연립방정식 [[3, 2, -1], [2, -2, 4], [-1, 0.5, -1]]*[x, y, z] = [1, -2, 0] 풀어줘", "아! 삶이란 무엇일까?",
                     "니가 사용할 수 있는 외부 툴들의 이름과 용도를 알려줘.", "안녕 내 이름은 구루야.", "내 이름이 뭐지?"],
                     inputs= [question],
