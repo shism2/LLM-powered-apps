@@ -17,3 +17,23 @@ This prompt will be useful in synthesizing datasets of dialog lines. To that end
 - Often, a set of {persona} descriptions is generated automatically and randomly, rather than being manually crafted. This can sometimes lead to conceptual conflicts, where two or more characteristics contradict each other. This prompt therefore instructs the LLM to meticulously review the given {persona} to identify any such conflicts and make necessary modifications.
 
 - This prompt also urges the LLM to polish the created dialog line through iterative review making sure the dialog line aligns with the modified {persona}.
+
+### How to play around?
+The following code snippet provides an example of how you can utilize the language model (LLM) of your choice by swapping out the chat_model for any LLM you want.
+```
+from langchain import hub
+from langchain.chat_models import AzureChatOpenAI
+
+def streaming_output(response_generator):
+    for chunk in response_generator:
+        print(chunk.content, end='')    
+
+prompt = hub.pull("jet-taekyo-lee/persona-based-dialog")
+chat_model = AzureChatOpenAI(deployment_name=LLM_DEPLOYMENT_NAME, temperature=0)
+chain = prompt | chat_model
+
+response = chain.stream({'persona':persona, 'input': 'Life is so boring. Why is that?'})
+streaming_output(response)
+```
+
+visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/persona-based-dialog) and download nb_persona-based-dialog.ipynb file.
