@@ -1,0 +1,545 @@
+{
+    "name": "UserProfile",
+    "description": "User profile consisting of original persona, refined persona by a skillful profiler, and description refined persona",
+    "parameters": {
+        "title": "UserProfile",
+        "description": "User profile consisting of original persona, refined persona by a skillful profiler, and description refined persona",
+        "type": "object",
+        "properties": {
+            "original_persona": {
+                "title": "Original Persona",
+                "description": "original persona",
+                "allOf": [
+                    {
+                        "title": "UserPersona",
+                        "description": "Information about a person.",
+                        "type": "object",
+                        "properties": {
+                            "gender": {
+                                "title": "Gender",
+                                "description": "gender of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "male",
+                                    "female",
+                                    "Non_binary"
+                                ],
+                                "type": "string"
+                            },
+                            "name": {
+                                "title": "Name",
+                                "description": "name of user",
+                                "default": "unknown",
+                                "type": "string"
+                            },
+                            "language": {
+                                "title": "Language",
+                                "description": "spoken language of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "English",
+                                    "Mandarin",
+                                    "Japanese",
+                                    "Hindi",
+                                    "French",
+                                    "Portuguese",
+                                    "Italian",
+                                    "Korean",
+                                    "Russian",
+                                    "Indonesian",
+                                    "Dutch",
+                                    "Arabic",
+                                    "Turkish",
+                                    "German",
+                                    "Romansh",
+                                    "Swedish",
+                                    "Polish",
+                                    "Spanish",
+                                    "Thai",
+                                    "Persian",
+                                    "Norwegian"
+                                ],
+                                "type": "string"
+                            },
+                            "location": {
+                                "title": "Location",
+                                "description": "current location of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "United_States_of_America",
+                                    "China",
+                                    "Japan",
+                                    "Germany",
+                                    "India",
+                                    "United_Kingdom",
+                                    "France",
+                                    "Brazil",
+                                    "Italy",
+                                    "Canada",
+                                    "South_Korea",
+                                    "Russia",
+                                    "Australia",
+                                    "Spain",
+                                    "Mexico",
+                                    "Indonesia",
+                                    "Netherlands",
+                                    "Saudi_Arabia",
+                                    "Turkey",
+                                    "Switzerland",
+                                    "Taiwan",
+                                    "Sweden",
+                                    "Poland",
+                                    "Belgium",
+                                    "Argentina",
+                                    "Thailand",
+                                    "Iran",
+                                    "Austria",
+                                    "Norway",
+                                    "United_Arab_Emirates"
+                                ],
+                                "type": "string"
+                            },
+                            "age": {
+                                "title": "Age",
+                                "description": "age of user",
+                                "default": 30,
+                                "exclusiveMinimum": 5,
+                                "exclusiveMaximum": 100,
+                                "type": "integer"
+                            },
+                            "hobbies": {
+                                "title": "Hobbies",
+                                "description": "hobbies of user",
+                                "default": [
+                                    "unknown"
+                                ],
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                    "enum": [
+                                        "unknown",
+                                        "playing_with_electronic_devices",
+                                        "sports",
+                                        "watching_movies",
+                                        "reading",
+                                        "gardening",
+                                        "painting",
+                                        "hiking",
+                                        "knitting",
+                                        "cooking",
+                                        "photography",
+                                        "playing_guitar",
+                                        "traveling",
+                                        "swimming",
+                                        "dancing",
+                                        "blogging",
+                                        "birdwatching",
+                                        "writing_poetry",
+                                        "fishing",
+                                        "cycling",
+                                        "playing_chess",
+                                        "baking",
+                                        "running",
+                                        "collecting_stamps",
+                                        "yoga",
+                                        "camping",
+                                        "DIY_projects",
+                                        "singing",
+                                        "pottery",
+                                        "skateboarding",
+                                        "astronomy",
+                                        "playing_video_games"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "talkative": {
+                                "title": "Talkative",
+                                "description": "whether or not user is willing to do small talk which is not related to current topic",
+                                "default": true,
+                                "type": "boolean"
+                            },
+                            "characteristics": {
+                                "title": "Characteristics",
+                                "description": "user's personality",
+                                "default": [
+                                    "unknown"
+                                ],
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                    "enum": [
+                                        "unknown",
+                                        "Diligent",
+                                        "Enthusiastic",
+                                        "Humble",
+                                        "Intuitive",
+                                        "Jovial",
+                                        "Kind_hearted",
+                                        "Loyal",
+                                        "Meticulous",
+                                        "Nurturing",
+                                        "Optimistic",
+                                        "Patient",
+                                        "Resourceful",
+                                        "Sincere",
+                                        "Timid",
+                                        "Understanding",
+                                        "Vibrant",
+                                        "Witty",
+                                        "Xenial",
+                                        "Yielding",
+                                        "Zealous",
+                                        "Arrogant",
+                                        "Boisterous",
+                                        "Cynical",
+                                        "Dismissive",
+                                        "Evasive",
+                                        "Fickle",
+                                        "Grumpy",
+                                        "Impulsive",
+                                        "Compassionate",
+                                        "NotDiligent",
+                                        "NotEnthusiastic",
+                                        "NotHumble",
+                                        "NotIntuitive",
+                                        "NotJovial",
+                                        "NotKind_hearted",
+                                        "NotLoyal",
+                                        "NotMeticulous",
+                                        "NotNurturing",
+                                        "NotOptimistic",
+                                        "NotPatient",
+                                        "NotResourceful",
+                                        "NotSincere",
+                                        "NotTimid",
+                                        "NotUnderstanding",
+                                        "NotVibrant",
+                                        "NotWitty",
+                                        "NotXenial",
+                                        "NotYielding",
+                                        "NotZealous",
+                                        "NotArrogant",
+                                        "NotBoisterous",
+                                        "NotCynical",
+                                        "NotDismissive",
+                                        "NotEvasive",
+                                        "NotFickle",
+                                        "NotGrumpy",
+                                        "NotImpulsive",
+                                        "NotCompassionate"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "education_level": {
+                                "title": "Education Level",
+                                "description": "user's educational level",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "kindergarten_level",
+                                    "elementary_school_level",
+                                    "middle_school_level",
+                                    "high_school_level",
+                                    "undergraduate_college_level",
+                                    "master_degree_level",
+                                    "phd_degree_level",
+                                    "genius_level"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                ]
+            },
+            "refined_persona": {
+                "title": "Refined Persona",
+                "description": "refined persona",
+                "allOf": [
+                    {
+                        "title": "UserPersona",
+                        "description": "Information about a person.",
+                        "type": "object",
+                        "properties": {
+                            "gender": {
+                                "title": "Gender",
+                                "description": "gender of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "male",
+                                    "female",
+                                    "Non_binary"
+                                ],
+                                "type": "string"
+                            },
+                            "name": {
+                                "title": "Name",
+                                "description": "name of user",
+                                "default": "unknown",
+                                "type": "string"
+                            },
+                            "language": {
+                                "title": "Language",
+                                "description": "spoken language of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "English",
+                                    "Mandarin",
+                                    "Japanese",
+                                    "Hindi",
+                                    "French",
+                                    "Portuguese",
+                                    "Italian",
+                                    "Korean",
+                                    "Russian",
+                                    "Indonesian",
+                                    "Dutch",
+                                    "Arabic",
+                                    "Turkish",
+                                    "German",
+                                    "Romansh",
+                                    "Swedish",
+                                    "Polish",
+                                    "Spanish",
+                                    "Thai",
+                                    "Persian",
+                                    "Norwegian"
+                                ],
+                                "type": "string"
+                            },
+                            "location": {
+                                "title": "Location",
+                                "description": "current location of user",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "United_States_of_America",
+                                    "China",
+                                    "Japan",
+                                    "Germany",
+                                    "India",
+                                    "United_Kingdom",
+                                    "France",
+                                    "Brazil",
+                                    "Italy",
+                                    "Canada",
+                                    "South_Korea",
+                                    "Russia",
+                                    "Australia",
+                                    "Spain",
+                                    "Mexico",
+                                    "Indonesia",
+                                    "Netherlands",
+                                    "Saudi_Arabia",
+                                    "Turkey",
+                                    "Switzerland",
+                                    "Taiwan",
+                                    "Sweden",
+                                    "Poland",
+                                    "Belgium",
+                                    "Argentina",
+                                    "Thailand",
+                                    "Iran",
+                                    "Austria",
+                                    "Norway",
+                                    "United_Arab_Emirates"
+                                ],
+                                "type": "string"
+                            },
+                            "age": {
+                                "title": "Age",
+                                "description": "age of user",
+                                "default": 30,
+                                "exclusiveMinimum": 5,
+                                "exclusiveMaximum": 100,
+                                "type": "integer"
+                            },
+                            "hobbies": {
+                                "title": "Hobbies",
+                                "description": "hobbies of user",
+                                "default": [
+                                    "unknown"
+                                ],
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                    "enum": [
+                                        "unknown",
+                                        "playing_with_electronic_devices",
+                                        "sports",
+                                        "watching_movies",
+                                        "reading",
+                                        "gardening",
+                                        "painting",
+                                        "hiking",
+                                        "knitting",
+                                        "cooking",
+                                        "photography",
+                                        "playing_guitar",
+                                        "traveling",
+                                        "swimming",
+                                        "dancing",
+                                        "blogging",
+                                        "birdwatching",
+                                        "writing_poetry",
+                                        "fishing",
+                                        "cycling",
+                                        "playing_chess",
+                                        "baking",
+                                        "running",
+                                        "collecting_stamps",
+                                        "yoga",
+                                        "camping",
+                                        "DIY_projects",
+                                        "singing",
+                                        "pottery",
+                                        "skateboarding",
+                                        "astronomy",
+                                        "playing_video_games"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "talkative": {
+                                "title": "Talkative",
+                                "description": "whether or not user is willing to do small talk which is not related to current topic",
+                                "default": true,
+                                "type": "boolean"
+                            },
+                            "characteristics": {
+                                "title": "Characteristics",
+                                "description": "user's personality",
+                                "default": [
+                                    "unknown"
+                                ],
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                    "enum": [
+                                        "unknown",
+                                        "Diligent",
+                                        "Enthusiastic",
+                                        "Humble",
+                                        "Intuitive",
+                                        "Jovial",
+                                        "Kind_hearted",
+                                        "Loyal",
+                                        "Meticulous",
+                                        "Nurturing",
+                                        "Optimistic",
+                                        "Patient",
+                                        "Resourceful",
+                                        "Sincere",
+                                        "Timid",
+                                        "Understanding",
+                                        "Vibrant",
+                                        "Witty",
+                                        "Xenial",
+                                        "Yielding",
+                                        "Zealous",
+                                        "Arrogant",
+                                        "Boisterous",
+                                        "Cynical",
+                                        "Dismissive",
+                                        "Evasive",
+                                        "Fickle",
+                                        "Grumpy",
+                                        "Impulsive",
+                                        "Compassionate",
+                                        "NotDiligent",
+                                        "NotEnthusiastic",
+                                        "NotHumble",
+                                        "NotIntuitive",
+                                        "NotJovial",
+                                        "NotKind_hearted",
+                                        "NotLoyal",
+                                        "NotMeticulous",
+                                        "NotNurturing",
+                                        "NotOptimistic",
+                                        "NotPatient",
+                                        "NotResourceful",
+                                        "NotSincere",
+                                        "NotTimid",
+                                        "NotUnderstanding",
+                                        "NotVibrant",
+                                        "NotWitty",
+                                        "NotXenial",
+                                        "NotYielding",
+                                        "NotZealous",
+                                        "NotArrogant",
+                                        "NotBoisterous",
+                                        "NotCynical",
+                                        "NotDismissive",
+                                        "NotEvasive",
+                                        "NotFickle",
+                                        "NotGrumpy",
+                                        "NotImpulsive",
+                                        "NotCompassionate"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "education_level": {
+                                "title": "Education Level",
+                                "description": "user's educational level",
+                                "default": "unknown",
+                                "enum": [
+                                    "unknown",
+                                    "kindergarten_level",
+                                    "elementary_school_level",
+                                    "middle_school_level",
+                                    "high_school_level",
+                                    "undergraduate_college_level",
+                                    "master_degree_level",
+                                    "phd_degree_level",
+                                    "genius_level"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                ]
+            },
+            "refined_persona_description": {
+                "title": "Refined Persona Description",
+                "description": "description of refined persona",
+                "allOf": [
+                    {
+                        "title": "UserPersonaDescription",
+                        "description": "Descriptive sentence of a persona.",
+                        "type": "object",
+                        "properties": {
+                            "description_of_persona": {
+                                "title": "Description Of Persona",
+                                "description": "descriptive sentence of a persona",
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "description_of_persona"
+                        ],
+                        "additionalProperties": false
+                    }
+                ]
+            }
+        },
+        "required": [
+            "original_persona",
+            "refined_persona",
+            "refined_persona_description"
+        ],
+        "additionalProperties": false
+    }
+}

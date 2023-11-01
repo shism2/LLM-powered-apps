@@ -1,5 +1,17 @@
 from enum import Enum
 
+
+def get_enum_schemas():
+    def get_enum_schema(enum_classes):  
+        schemas = []  
+        for enum_class in enum_classes:  
+            schema = f"Enum class '{enum_class.__name__}': " + ", ".join([f"{member.name} = {member.value}" for member in enum_class])  
+            schemas.append(schema)  
+        return "\n\n".join(schemas) 
+
+    return get_enum_schema([Nations, Languages, Gender, Devices, Characteristics, Hobbies, Education_level, Specialties])   
+
+
 class Nations(Enum):
     unknown = 0
     United_States_of_America = 1
