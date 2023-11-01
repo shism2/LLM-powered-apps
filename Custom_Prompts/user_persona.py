@@ -13,8 +13,8 @@ import random
 #     name: str = Field(default='unknown', description='name of user')
 #     language : Languages = Field(default=Languages.unknown, description='spoken language of user')
 #     # language : Literal[*list(Languages.__members__.keys())] = Field(default='unknown', description='spoken language of user')
-#     location: Nations = Field(default=Nations.unknown, description='current location of user')
-#     # location: Literal[*list(Nations.__members__.keys())] = Field(default='unknown', description='current location of user')
+#     Nationality: Nations = Field(default=Nations.unknown, description='current location of user')
+#     # Nationality: Literal[*list(Nations.__members__.keys())] = Field(default='unknown', description='current location of user')
 #     age : int = Field(default=30, gt=5, lt=100, description='age of user')
 #     hobbies : List[Hobbies] = Field(default=[Hobbies.unknown], min_items=1, max_items=5, description='hobbies of user')
 #     # hobbies : List[Literal[*list(Hobbies.__members__.keys())]] = Field(default=['unknown'], min_items=1, max_items=5, description='hobbies of user')
@@ -49,8 +49,8 @@ class UserPersona(BaseModel):  # Literal version
     name: str = Field(default='unknown', description='name of user')
     # language : Languages = Field(default=Languages.unknown, description='spoken language of user')
     language : Literal[*list(Languages.__members__.keys())] = Field(default='unknown', description='spoken language of user')
-    # location: Nations = Field(default=Nations.unknown, description='current location of user')
-    location: Literal[*list(Nations.__members__.keys())] = Field(default='unknown', description='current location of user')
+    # Nationality: Nations = Field(default=Nations.unknown, description='nationality of user')
+    nationality: Literal[*list(Nations.__members__.keys())] = Field(default='unknown', description='nationality of user')
     age : int = Field(default=30, gt=5, lt=100, description='age of user')
     # hobbies : List[Hobbies] = Field(default=[Hobbies.unknown], min_items=1, max_items=5, description='hobbies of user')
     hobbies : List[Literal[*list(Hobbies.__members__.keys())]] = Field(default=['unknown'], min_items=1, max_items=5, description='hobbies of user')
@@ -116,7 +116,7 @@ class UserProfile(BaseModel):
 #         inputs['name'] = fake.name()
 #     # inputs['language'] = random.randint(0, len(Languages.__members__)-1)
 #     inputs['language'] = 1
-#     inputs['location'] = random.randint(0, len(Nations.__members__)-1)
+#     inputs['Nationality'] = random.randint(0, len(Nations.__members__)-1)
 #     inputs['age'] = random.randint(5, 99)
 #     inputs['hobbies'] = filter_out_list([random.randint(0, len(Hobbies.__members__)-1) for _ in range(0, random.randint(1, UserPersona.__fields__['hobbies'].field_info.max_items))])
 #     inputs['talkative'] = fake.boolean()
@@ -143,7 +143,7 @@ def get_random_user_persona():  # Literal version
         inputs['name'] = fake.name()
     # inputs['language'] = random.randint(0, len(Languages.__members__)-1)
     inputs['language'] = 'English'
-    inputs['location'] = list(Nations.__members__.keys())[random.randint(0, len(Nations.__members__)-1)]
+    inputs['nationality'] = list(Nations.__members__.keys())[random.randint(0, len(Nations.__members__)-1)]
     inputs['age'] = random.randint(5, 99)
     inputs['hobbies'] = filter_out_list([  list(Hobbies.__members__.keys())[random.randint(0, len(Hobbies.__members__)-1)]  for _ in range(0, random.randint(1, UserPersona.__fields__['hobbies'].field_info.max_items))])
     inputs['talkative'] = fake.boolean()

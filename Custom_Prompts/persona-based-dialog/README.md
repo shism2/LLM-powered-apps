@@ -6,7 +6,7 @@ persona = '{
     "gender": "male", 
     "name": "Joshua Ramos", 
     "language": "English", 
-    "location": "Saudi_Arabia", 
+    "nationality": "Saudi_Arabia", 
     "age": 93, 
     "hobbies": ["traveling"], 
     "talkative": true, 
@@ -30,7 +30,7 @@ This prompt will be useful in synthesizing datasets of dialog lines. To that end
 
 
 # How to play around?
-The following code snippet provides an example of how you can utilize the language model (LLM) of your choice by swapping out the chat_model for any LLM you want.
+The following code snippet provides an example of how you can utilize the prompt with LLMs. You can swap out AzureChatOpenAI() for any LLM you want.
 ```
 from langchain import hub
 from langchain.chat_models import AzureChatOpenAI

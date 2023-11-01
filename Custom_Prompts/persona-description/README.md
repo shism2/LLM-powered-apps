@@ -8,15 +8,15 @@ This prompt expects a single input variable, {persona}:
  - persona : This provides a structured description of the character that the LLM is expected to represent when generating the dialogue line. The persona description informs the tone, style, and content of the chatbot's responses. Here is an example:
 ```
 persona = '{
-    "gender": "male",
-    "name": "William Reid",
+    "gender": "unknown",
+    "name": "Roy Kirby",
     "language": "English",
-    "location": "Mexico",
-    "age": 9,
-    "hobbies": ["birdwatching", "DIY_projects", "camping", "dancing", "swimming"],
+    "nationality": "Germany",
+    "age": 28,
+    "hobbies": ["hiking", "fishing", "painting"],
     "talkative": false,
-    "characteristics": ["NotSincere", "Enthusiastic", "Humble", "NotArrogant", "Nurturing"],
-    "education_level": "master_degree_level"
+    "characteristics": ["Timid", "NotDismissive", "Jovial", "Resourceful"],
+    "education_level": "genius_level"
   }'
 ```
 
@@ -25,29 +25,29 @@ The chatbot refines the persona and writes a description of the refined persona.
 output = 
 '{
   "original_persona": {
-    "gender": "male",
-    "name": "William Reid",
+    "gender": "unknown",
+    "name": "Roy Kirby",
     "language": "English",
-    "location": "Mexico",
-    "age": 9,
-    "hobbies": ["birdwatching", "DIY_projects", "camping", "dancing", "swimming"],
+    "nationality": "Germany",
+    "age": 28,
+    "hobbies": ["hiking", "fishing", "painting"],
     "talkative": false,
-    "characteristics": ["NotSincere", "Enthusiastic", "Humble", "NotArrogant", "Nurturing"],
-    "education_level": "master_degree_level"
+    "characteristics": ["Timid", "NotDismissive", "Jovial", "Resourceful"],
+    "education_level": "genius_level"
   },
   "refined_persona": {
     "gender": "male",
-    "name": "William Reid",
+    "name": "Roy Kirby",
     "language": "English",
-    "location": "Mexico",
-    "age": 9,
-    "hobbies": ["birdwatching", "DIY_projects", "camping", "dancing", "swimming"],
+    "nationality": "United_Kingdom",
+    "age": 28,
+    "hobbies": ["hiking", "fishing", "painting"],
     "talkative": false,
-    "characteristics": ["Enthusiastic", "Humble", "Nurturing"],
-    "education_level": "elementary_school_level"
+    "characteristics": ["Timid", "NotDismissive", "Jovial", "Resourceful"],
+    "education_level": "genius_level"
   },
   "refined_persona_description": {
-    "description_of_persona": "William Reid is a 9-year-old boy from Mexico. He is not very talkative but is known for his enthusiasm, humility, and nurturing nature. Despite his young age, William has a variety of hobbies including birdwatching, DIY projects, camping, dancing, and swimming. He communicates in English and is currently at the elementary school level in his education."
+    "description_of_persona": "Roy Kirby is a 28-year-old male from the United Kingdom. He is a genius-level intellect who speaks English. Despite being timid, he is not dismissive and has a jovial and resourceful nature. He is not very talkative. His hobbies include hiking, fishing, and painting."
   }
 }'
 ```
@@ -62,7 +62,7 @@ This prompt is beneficial for creating datasets of high-quality personas without
 
 
 # How to play around?
-The following code snippet provides an example of how you can utilize the language model (LLM) of your choice by swapping out the chat_model for any LLM you want.
+The following code snippet provides an example of how you can utilize the prompt with LLMs.  Due to OpenAI Function calling, you need to use OpenAI's LLMs.
 ```
 from user_persona import UserPersona, get_random_user_persona
 from user_persona import UserProfile
