@@ -1,5 +1,6 @@
-import os
-import load_envs
+import os, sys
+sys.path.extend(['..', '../..'])
+from utils import load_envs
 import requests
 import datetime, pytz
 from typing import Type

@@ -22,7 +22,7 @@ from AgentTools.python_repl_tools import GetLangChainPythonRepl
 from configurations import Configurations
 
 def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> List[Tool]:
-        search_tool = get_web_search_tools(config.search_tool.value)
+        search_tool = get_web_search_tools(config)
         weather_tool = GetFromOpenWeatherMap()
         math_tool = GetFromWolfram()
         time_tool = GetFromDatetimeModule()

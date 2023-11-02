@@ -1,19 +1,22 @@
-import os, load_envs, argparse, sys
+import os, sys
+sys.path.extend(['..', '../..'])
+from utils.load_vars import get_param
+import argparse
 import agent_enums
 import gradio as gr
 from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
-
+from get_llm import get_base_llm
 from external_memories import SimpleListChatMemory
 from configurations import Configurations, folder_existence_check
-from langchain.chat_models import AzureChatOpenAI
+
 from CustomAgents import ReActAgent
 
 
 ## argments
 parser = argparse.ArgumentParser()
+parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='AzureChatOpenAI')
 parser.add_argument("--agent_type", type=agent_enums.Agentype, choices=list(agent_enums.Agentype), default=agent_enums.Agentype.openai)
-parser.add_argument("--azure_d_name", type=agent_enums.AzureDeploymentName, choices=list(agent_enums.AzureDeploymentName), default=agent_enums.AzureDeploymentName.gpt4_32k)
 parser.add_argument("--retrieval_chain_type", type=agent_enums.RetriecalChainType, choices=list(agent_enums.RetriecalChainType), default=agent_enums.RetriecalChainType.stuff)
 parser.add_argument("--llm_search_api_chain_type", type=agent_enums.RetriecalChainType, choices=list(agent_enums.RetriecalChainType), default=agent_enums.RetriecalChainType.stuff)
 parser.add_argument("--verbose", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
@@ -26,7 +29,7 @@ args = parser.parse_args()
 ## Create objects
 config = Configurations(**vars(args))
 folder_existence_check(config)
-llms = [AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0, streaming=config.streaming.value)]    
+llms = [get_base_llm(config)]    
 agents = [ReActAgent(llms[0], config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
@@ -52,7 +55,7 @@ def qna(human_message, temperature, max_tokens):
         GUI_CHAT_RECORD(human_message, response)
         logging_qa(qa_logger, human_message, response)
         sys.stdout = original_stdout
-        return GUI_CHAT_RECORD.chat_history
+        return GUI_CHAT_RECORD.chat_history, ''
     except Exception as e:
         raise gr.Error(e)
 
@@ -66,7 +69,7 @@ def agent_type_change(agent_type):
         elif agent_type == 'ReAct':
             config.agent_type = agent_enums.Agentype.react
             gr.Info("Agent type chaged to ReAct. All chat history is deleted.")
-        llms[0] = AzureChatOpenAI(deployment_name=config.azure_gpt_deployment_name.value, temperature=0.0, streaming=config.streaming.value)     
+        llms[0] = get_base_llm(config)     
         agents[0] = ReActAgent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -132,7 +135,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
                     label='Example questions'
                 )
 
-    run_btn.click(qna, inputs=[question, temperature, max_tokens], outputs=[chatbot_window])
+    run_btn.click(qna, inputs=[question, temperature, max_tokens], outputs=[chatbot_window, question])
     clr_screen.click(GUI_CHAT_RECORD.clear_memory, inputs=[], outputs=[chatbot_window])
 
     demo.load(read_logs_from_file, scratchpad_log_folder, agent_scratchpad, every=1)
