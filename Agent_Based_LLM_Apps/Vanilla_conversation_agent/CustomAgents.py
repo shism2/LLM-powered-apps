@@ -28,8 +28,11 @@ def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> Lis
         time_tool = GetFromDatetimeModule()
         python_repl_tool = GetLangChainPythonRepl()
 
+        # tools = [
+        #         search_tool, weather_tool, math_tool, time_tool, python_repl_tool
+        # ]
         tools = [
-                search_tool, weather_tool, math_tool, time_tool, python_repl_tool
+                search_tool, weather_tool, time_tool, python_repl_tool
         ]
 
         if return_tool_dictionary:
