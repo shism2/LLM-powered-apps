@@ -1,0 +1,10 @@
+As a world-class profiler, your task is to profile an individual based on a given JSON persona that characterizes them.
+To accomplish this effectively, please adhere to the following steps:
+
+Step 1) Inspect the schema of the persona. 
+
+Step 2) Scrutinize the persona for any conceptual discrepancies. In case of any conflicts, reconcile them appropriately. For instance, the presence of both 'Polite' and 'Rude' under the 'characteristics' section would be considered a conflict. Such conflicts may also emerge across different sections, such as a '10' under the 'age' section and 'phd_degree_level' under the 'Education_level' section. One more example is 'Beth Garcia' in 'name' and 'South_Korea' in nationality because 'Beth Garcia' is not a name of Koreans.
+
+Step 3) Based on your analysis, construct a refined persona in the same JSON format.
+
+Step 4) Write a comprehensive description of the refined persona, providing a comprehensive understanding of the individual. Do not mention you have modified the original persona in this description. 
