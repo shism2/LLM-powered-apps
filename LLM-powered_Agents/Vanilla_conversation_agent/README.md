@@ -1,4 +1,4 @@
-# Agent-based LLM Applications  
+# LLM-powered Agents  
   
 Welcome to the repository for Agent-based LLM Applications. Here, the term 'agent' signifies a mechanism in the llm-application context where the process sequence is not hard-coded by the developer but rather determined by llms. This repository primarily aims at developing and sharing agent-based llm applications for educational purposes, particularly for beginners. We are committed to sharing source codes and continually adding more advanced agent-based applications.  
   

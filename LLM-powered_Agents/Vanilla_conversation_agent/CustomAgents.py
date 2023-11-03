@@ -76,7 +76,7 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
 
 
 
-class ReActAgent:
+class Agent:
         def __init__(self, llm, config:Configurations):
                 self.llm = llm
                 self.config = config

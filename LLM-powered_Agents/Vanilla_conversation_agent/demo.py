@@ -10,7 +10,7 @@ from get_llm import get_base_llm
 from external_memories import SimpleListChatMemory
 from configurations import Configurations, folder_existence_check
 
-from CustomAgents import ReActAgent
+from CustomAgents import Agent
 
 
 ## argments
@@ -30,7 +30,7 @@ args = parser.parse_args()
 config = Configurations(**vars(args))
 folder_existence_check(config)
 llms = [get_base_llm(config)]    
-agents = [ReActAgent(llms[0], config=config)]
+agents = [Agent(llms[0], config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
 
@@ -70,7 +70,7 @@ def agent_type_change(agent_type):
             config.agent_type = agent_enums.Agentype.react
             gr.Info("Agent type chaged to ReAct. All chat history is deleted.")
         llms[0] = get_base_llm(config)     
-        agents[0] = ReActAgent(llms[0], config=config)
+        agents[0] = Agent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
     except Exception as e:
