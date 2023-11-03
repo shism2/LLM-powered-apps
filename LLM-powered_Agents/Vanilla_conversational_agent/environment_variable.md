@@ -1,16 +1,15 @@
-You have to create **.env** file in **Vanilla_conversation_agent** folder. The below are the environment variables you write to **.env** file. All variables are case-sensitive.
-
+You are required to create a **.env** file in the **Vanilla_conversation_agent** folder. This file should contain specific environment variables. All environment-variable names are case-sensitive. Remember to replace all the '...........' placeholders with your actual API keys or values.
 
 ### 1. Environment variable for LLM
-If you use OpenAI, you need two environment variables:
+For **OpenAI**'s LLMs, please include these two variables:
 
 OPENAI_API_KEY = '...........'
 
-model_name = '...........' ## example is 'gpt-3.5-turbo-0613'
+model_name = '...........' (For example, 'gpt-3.5-turbo-0613')
 
-If you use OpenAI, you need four environment variables:
+For **AzureOpenAI**'s LLMs, please include these four variables:
 
-OPENAI_API_TYPE = 'azure' ## This should be fixed to 'azure'
+OPENAI_API_TYPE = 'azure' (This should always be 'azure')
 
 OPENAI_API_VERSION = '...........'
 
@@ -21,16 +20,16 @@ OPENAI_API_KEY = '...........'
 deployment_name = '...........'
 
 
-### 1. Environment variable for weather tools
+### 2. Environment variable for weather tools
 OPENWEATHERMAP_API_KEY = '...........'
 
 
-### 2. Environment variable for math tools
+### 3. Environment variable for math tools
 WOLFRAM_ALPHA_APPID = '...........'
 
 
-### 3. Environment variable for web-search tools
-You can choose one out of three options for web search. The default is using **You.com**. So if you only have api key for native Google search API or Serp API rather than You.com api, you need to pass add `--search_tool Google` or `--search_tool Serp` when running `python demo.py`.
+### 4. Environment variable for web-search tools
+There are three options for web searching, with You.com as the default. If you prefer to use the native Google Search API or Serp API instead of You.com, you should include `--search_tool Google` or `--search_tool Serp` when running `python demo.py`.
 
 **Native Google search API**
 
