@@ -7,6 +7,8 @@ OPENAI_API_KEY = '...........'
 
 model_name = '...........' (For example, 'gpt-3.5-turbo-0613')
 
+
+
 For **AzureOpenAI**'s LLMs, please include these four variables:
 
 OPENAI_API_TYPE = 'azure' (This should always be 'azure')

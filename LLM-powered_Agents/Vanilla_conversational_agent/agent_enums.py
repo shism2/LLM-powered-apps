@@ -9,7 +9,7 @@ class Search(Enum):
     Serp = 'Serp AIP'
     YDC = 'You.com'
 
-class RetriecalChainType(Enum):
+class RetrievalChainType(Enum):
     stuff = 'stuff'
     map_reduce = 'map_reduce '
 

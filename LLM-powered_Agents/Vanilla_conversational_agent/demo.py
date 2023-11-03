@@ -15,10 +15,10 @@ from CustomAgents import Agent
 
 ## argments
 parser = argparse.ArgumentParser()
-parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='AzureChatOpenAI')
+parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='ChatOpenAI')
 parser.add_argument("--agent_type", type=agent_enums.Agentype, choices=list(agent_enums.Agentype), default=agent_enums.Agentype.openai)
-parser.add_argument("--retrieval_chain_type", type=agent_enums.RetriecalChainType, choices=list(agent_enums.RetriecalChainType), default=agent_enums.RetriecalChainType.stuff)
-parser.add_argument("--llm_search_api_chain_type", type=agent_enums.RetriecalChainType, choices=list(agent_enums.RetriecalChainType), default=agent_enums.RetriecalChainType.stuff)
+parser.add_argument("--retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
+# parser.add_argument("--llm_search_api_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
 parser.add_argument("--verbose", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
 parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent_enums.Search), default=agent_enums.Search.YDC)
 parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')
