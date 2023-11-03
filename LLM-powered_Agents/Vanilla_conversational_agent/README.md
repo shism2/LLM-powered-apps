@@ -7,26 +7,26 @@ The Vanilla Conversational Agent is a foundational application that merges the f
 
 ## What kinds of external tools it can use? 
 
-Currently, the tools this agent can use fall into five cateforeis:
-- Time: Get current time
-- Weather: Get current weather and weather prediction up to 7 days ahead
-- Math: Sove complex math problems
-- Web search: Do Google search
-- Python REPL: Run Python code interactively while in conversation with chatbot 
+The tools currently compatible with this agent fall into five categories:
+- Time: Fetches current time
+- Weather: Retrieves current weather and forecasts for up to 7 days
+- Math: Solves complex math problems
+- Web search: Executes Google searches
+- Python REPL: Runs Python code interactively during chatbot conversations
   
   
 ## How to use? 
 
-To taste Vanilla conversational agent, follow the three steps.
+To experience the Vanilla Conversational Agent, follow these three steps:
   
-### Step 1: Copy contents
-Copy the entire contents of in the forlder 'Vanilla_conversation_agent'. Alternatively, you can clone the entire repository 'https://github.com/Taekyo-Lee/LLM-powered-apps.git' and go into 'Vanilla_conversation_agent' in the cloned directory
+**Step 1: Copy contents**
+Copy all contents from the 'Vanilla_conversation_agent' folder. Alternatively, clone the entire repository from 'https://github.com/Taekyo-Lee/LLM-powered-apps.git' and navigate to the 'Vanilla_conversation_agent' directory in the cloned repository.
 
-### Step 2: Create a virtual environment and install dependencies
-Create a virtual environment by using your favoriate method like python venv module or conda. And then install dependencies by using 'requirements.txt' file.
+**Step 2: Create a virtual environment and install dependencies**
+Create a virtual environment using your preferred method, such as the Python venv module or Conda. Next, install the necessary dependencies using the 'requirements.txt' file.
 
-### Step 3: Create '.env' file and populate it with environment variables
-For security reason, '.env' file is not pushed in this repository. You have to create it on your own and fill it with necessary environment variable. Read 'environment_variable.md' to get information about the required environment variables.
+**Step 3: Create '.env' file and populate it with environment variables**
+For security reasons, the '.env' file is not included in this repository. You'll need to create this file yourself and populate it with the required environment variables. Refer to 'environment_variable.md' for information about these variables.
 
-After doing all of the steps above, run 'python demo.py' on the terminal. You can also pass in various arguments when executing 'demo.py' by following Python's argparse library. Refer to 'environment_variable.md' to get information about arguments.mail.com. We are always looking to improve and welcome any feedback.   
+After completing the above steps, run 'python demo.py' in your terminal. If you wish to pass various arguments when executing 'demo.py', follow the guidelines provided by Python's argparse library. For more information about arguments, refer to 'environment_variable.md'.
   
