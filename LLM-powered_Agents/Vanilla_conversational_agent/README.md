@@ -19,17 +19,17 @@ The tools currently compatible with this agent fall into five categories:
 
 To experience the Vanilla Conversational Agent, follow these three steps:
   
-**Step 1: Copy contents**
+### Step 1: Copy contents
 
 Copy all contents from the **Vanilla_conversation_agent** folder. Alternatively, clone the entire repository from https://github.com/Taekyo-Lee/LLM-powered-apps.git and navigate to the **Vanilla_conversation_agent** directory in the cloned repository.
 
-**Step 2: Create a virtual environment and install dependencies**
+### Step 2: Create a virtual environment and install dependencies
 
 Create a virtual environment using your preferred method, such as the Python venv module or Conda. Next, install the necessary dependencies using the **requirements.txt** file.
 
-**Step 3: Create '.env' file and populate it with environment variables**
+### Step 3: Create '.env' file and populate it with environment variables
 
 For security reasons, the '.env' file is not included in this repository. You'll need to create this file yourself and populate it with the required environment variables. Refer to **environment_variable.md** for information about these variables.
 
-After completing the above steps, run `python demo.py` in your terminal. If you wish to pass various arguments when executing `python demo.py`, follow the guidelines provided by Python's argparse library. For more information about arguments, refer to **environment_variable.md**.
+After completing the above steps, run `python demo.py` in your terminal. If you wish to pass various arguments when executing `python demo.py`, follow the guidelines provided by Python's argparse library. For more information about arguments, refer to **input_arguments.md**.
   
