@@ -9,7 +9,6 @@ from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_fil
 from get_llm import get_base_llm
 from external_memories import SimpleListChatMemory
 from configurations import Configurations, folder_existence_check
-
 from CustomAgents import Agent
 
 
@@ -43,11 +42,11 @@ for k, v in config:
 
 ## Gradio functions
 def qna(human_message, temperature, max_tokens):
-    global agents, llms, config
+    global agents, config, GUI_CHAT_RECORD
+    original_stdout = sys.stdout 
     try:
         if agents[0].config.agent_type.value == 'zeroshot react':
             gr.Warning('Memory for ReAct agent temporarily disabled.')
-        original_stdout = sys.stdout 
         sys.stdout =ScratchpadLogger(config.scratchpad_log_folder)  
         agents[0].set_temperature(temperature)        
         agents[0].set_max_tokens(max_tokens)        
@@ -57,8 +56,9 @@ def qna(human_message, temperature, max_tokens):
         sys.stdout = original_stdout
         return GUI_CHAT_RECORD.chat_history, ''
     except Exception as e:
-        with open(os.path.join(config.scratchpad_log_folder, 'scratch_log.log'), 'w') as file:  
-            file.write("Temporary Error.")  
+        sys.stdout = original_stdout
+        # with open(os.path.join(config.scratchpad_log_folder, 'scratch_log.log'), 'w') as file:  
+        #     file.write("Temporary Error.")  
         agents[0].delete_scratchpad_logs()
         raise gr.Error(e)
 
@@ -159,8 +159,8 @@ with gr.Blocks(title='Conversational Agent') as demo:
     run_btn.click(qna, inputs=[question, temperature, max_tokens], outputs=[chatbot_window, question])
     clr_screen.click(GUI_CHAT_RECORD.clear_memory, inputs=[], outputs=[chatbot_window])
 
-    demo.load(read_logs_from_file, scratchpad_log_folder, agent_scratchpad, every=1)
+    demo.load(read_logs_from_file, scratchpad_log_folder, agent_scratchpad, every=1, queue=True)
 
 
 gr.close_all()  
-demo.queue(max_size =1).launch(share=True)
+demo.queue().launch(share=True)
