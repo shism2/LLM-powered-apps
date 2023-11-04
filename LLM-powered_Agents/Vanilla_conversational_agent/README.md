@@ -21,7 +21,7 @@ To experience the Vanilla Conversational Agent, follow these three steps:
   
 ### Step 1: Copy contents
 
-Copy all contents from the **Vanilla_conversation_agent** folder. Alternatively, clone the entire repository from https://github.com/Taekyo-Lee/LLM-powered-apps.git and navigate to the **Vanilla_conversation_agent** directory in the cloned repository.
+Clone the entire repository from https://github.com/Taekyo-Lee/LLM-powered-apps.git and navigate to the **Vanilla_conversation_agent** directory in the cloned repository. Note that there are necessary files outside of **Vanilla_conversation_agent** directory. So do not just copy the contents only in **Vanilla_conversation_agent** directory. 
 
 ### Step 2: Create a virtual environment and install dependencies
 
