@@ -44,8 +44,6 @@ def qna(human_message, temperature, max_tokens):
     global agents, config, GUI_CHAT_RECORD
     original_stdout = sys.stdout 
     try:
-        if agents[0].config.agent_type.value == 'zeroshot react':
-            gr.Warning('Memory for ReAct agent temporarily disabled.')
         sys.stdout =ScratchpadLogger(config.scratchpad_log_folder)  
         agents[0].set_temperature(temperature)        
         agents[0].set_max_tokens(max_tokens)        

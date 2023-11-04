@@ -3,6 +3,7 @@ import langchain
 from langchain.agents import initialize_agent, AgentType, Tool
 from typing import List, Any, Literal
 import gradio as gr
+import copy
 
 ### For OpenAI Function agent
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
@@ -20,6 +21,14 @@ from AgentTools.math_tools import GetFromWolfram
 from AgentTools.time_tools import GetFromDatetimeModule
 from AgentTools.python_repl_tools import GetLangChainPythonRepl
 from agent_specific.configurations import Configurations
+
+
+### For ReAct agent
+from langchain import hub
+from langchain.tools.render import render_text_description_and_args
+from langchain.agents.output_parsers import JSONAgentOutputParser
+from langchain.agents.format_scratchpad import format_log_to_str
+
 
 def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> List[Tool]:
         search_tool = get_web_search_tools(config)
@@ -47,22 +56,37 @@ def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> Lis
 def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentExecutor :
 
         memory = ConversationBufferMemory(return_messages=True, memory_key="chat_history")
-        
+        tools = get_tools(config)
+
         if config.agent_type.value == 'ReAct':         
-                agent_executor = initialize_agent(get_tools(config), llm, agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION, verbose=config.verbose.value, memory=memory)
-                agent_executor.memory = memory
-                system_message_breakdown = (agent_executor.agent.llm_chain.prompt.messages[0].prompt.template).split(' Format is Action')
-                agent_executor.agent.llm_chain.prompt.messages[0].prompt.template = system_message_breakdown[0] + " Your final answer should be the same language as the query (It is ok to use English at intermediate steps).  Format is Action" + system_message_breakdown[1]
+                prompt = hub.pull("hwchase17/react-multi-input-json")
+                human_msg = copy.deepcopy(prompt.messages[1])
+                prompt.messages[1] = MessagesPlaceholder(variable_name="chat_history")
+                prompt.messages.append(human_msg)                
+                prompt = prompt.partial(
+                        tools=render_text_description_and_args(tools),
+                        tool_names=", ".join([t.name for t in tools]),
+                )
+                llm_with_stop = llm.bind(stop=["Observation"])
+                agent = (
+                        {
+                                "input": lambda x: x["input"],
+                                "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
+                                "chat_history": lambda x: x["chat_history"],
+                        }
+                        | prompt | llm_with_stop | JSONAgentOutputParser()
+                )  # RunnablePassthrough.assign?
+
+                system_msg_break_point = 'You have access to the following tools:'
+                agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
         
         
-        
-        if config.agent_type.value == 'OpenAI Functions':
-                tools = get_tools(config)
+        if config.agent_type.value == 'OpenAI Functions':                
                 functions = [format_tool_to_openai_function(f) for f in tools]
                 llm_with_functions = llm.bind(functions=functions)
 
                 prompt = ChatPromptTemplate.from_messages([
-                        SystemMessagePromptTemplate.from_template("You are a helpful assistant. Respond to the human as helpfully and accurately as possible. Your final answer should be the same language as the query (It is ok to use English at intermediate steps)."),
+                        SystemMessagePromptTemplate.from_template("You are a helpful assistant. Respond to the human as helpfully and accurately as possible."),
                         MessagesPlaceholder(variable_name="chat_history"),
                         HumanMessagePromptTemplate.from_template("{input}"),
                         MessagesPlaceholder(variable_name="agent_scratchpad")
@@ -70,9 +94,11 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
                 agent = RunnablePassthrough.assign(
                         agent_scratchpad= lambda x: format_to_openai_functions(x["intermediate_steps"])
                 ) | prompt | llm_with_functions | OpenAIFunctionsAgentOutputParser() # This parser contains either agent's intermediate step or final message                
+                
+                system_msg_break_point = None
                 agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
 
-        return agent_executor
+        return agent_executor, system_msg_break_point
 
 
 
@@ -80,18 +106,16 @@ class Agent:
         def __init__(self, llm, config:Configurations):
                 self.llm = llm
                 self.config = config
-                self.agent_executor = get_custom_agent(self.llm, self.config)
+                self.agent_executor, self.system_msg_break_point = get_custom_agent(self.llm, self.config)
+                self.append_sysem_msg("Your final answer should be the same language as the query (It is ok to use English at intermediate steps).")
                 self.original_system_msg = (self.system_msg+' ')[:-1]
                 self.delete_scratchpad_logs()
 
         @property
         def system_msg(self)-> str:
-                if self.config.agent_type.value == 'ReAct':
-                        return self.agent_executor.agent.llm_chain.prompt.messages[0].prompt.template
-                if self.config.agent_type.value == 'OpenAI Functions':
-                        for runnable_comp in self.agent_executor.agent.runnable:
-                                if runnable_comp[0]=='middle':
-                                        return runnable_comp[1][0].messages[0].prompt.template
+                for runnable_comp in self.agent_executor.agent.runnable:
+                        if runnable_comp[0]=='middle':
+                                return runnable_comp[1][0].messages[0].prompt.template
         
 
         def __call__(self, query):
@@ -99,26 +123,26 @@ class Agent:
 
 
         def get_ruannble_comp(self, target:Literal['prompt', 'bound'])->Any:
-                if self.config.agent_type.value == 'OpenAI Functions':
-                        for runnable_comp in self.agent_executor.agent.runnable:
-                                if runnable_comp[0]=='middle':
-                                        component = runnable_comp[1]
-                                        break
-                        if target == 'prompt':
-                                return component[0]
-                        elif target == 'bound':
-                                return component[1].bound
+                # if self.config.agent_type.value == 'OpenAI Functions':
+                for runnable_comp in self.agent_executor.agent.runnable:
+                        if runnable_comp[0]=='middle':
+                                component = runnable_comp[1]
+                                break
+                if target == 'prompt':
+                        return component[0]
+                elif target == 'bound':
+                        return component[1].bound
 
         
         def append_sysem_msg(self, msg: str)-> str:
                 try:
-                        if self.config.agent_type.value == 'ReAct':
-                                system_msg_breakdown = self.system_msg.split(' Format is Action')
-                                appended_system_msg = system_msg_breakdown[0] + f" {msg} Format is Action" + system_msg_breakdown[1]
-                                self.agent_executor.agent.llm_chain.prompt.messages[0].prompt.template = appended_system_msg
-                        if self.config.agent_type.value == 'OpenAI Functions':
-                                appended_system_msg = self.system_msg + f' {msg}'  
-                                self.get_ruannble_comp('prompt').messages[0].prompt.template = appended_system_msg
+                        if self.system_msg_break_point != None:
+                                systme_msg_lit = self.system_msg.split(self.system_msg_break_point) 
+                                appended_system_msg = systme_msg_lit[0].strip() + ' ' + msg + ' ' + self.system_msg_break_point + ' ' + systme_msg_lit[1].strip()
+                        else:
+                                appended_system_msg = self.system_msg + ' ' + msg
+
+                        self.get_ruannble_comp('prompt').messages[0].prompt.template = appended_system_msg
                         gr.Info("Appending system message succeeded!")
                         return self.system_msg                      
                 except Exception as e:
@@ -126,11 +150,11 @@ class Agent:
 
         def reset_system_msg(self)-> str:
                 try:
-                        if self.config.agent_type.value == 'ReAct':
-                                self.agent_executor.agent.llm_chain.prompt.messages[0].prompt.template = (self.original_system_msg+' ')[:-1]
-                        if self.config.agent_type.value == 'OpenAI Functions':
-                                self.get_ruannble_comp('prompt').messages[0].prompt.template = (self.original_system_msg+' ')[:-1]
-                        gr.Info("Restoring system message succeeded!")
+                        # if self.config.agent_type.value == 'ReAct':
+                        #         self.agent_executor.agent.llm_chain.prompt.messages[0].prompt.template = (self.original_system_msg+' ')[:-1]
+                        # if self.config.agent_type.value == 'OpenAI Functions':
+                        self.get_ruannble_comp('prompt').messages[0].prompt.template = (self.original_system_msg+' ')[:-1]
+                        # gr.Info("Restoring system message succeeded!")
                         return self.system_msg
                 except Exception as e:
                         raise gr.Error(e)
@@ -139,17 +163,17 @@ class Agent:
 
 
         def set_max_tokens(self, max_tokens:int)-> None:
-                if self.config.agent_type.value == 'ReAct':
-                        self.agent_executor.agent.llm_chain.llm.max_tokens = max_tokens
-                if self.config.agent_type.value == 'OpenAI Functions':
-                        self.get_ruannble_comp('bound').max_tokens = max_tokens
+                # if self.config.agent_type.value == 'ReAct':
+                #         self.agent_executor.agent.llm_chain.llm.max_tokens = max_tokens
+                # if self.config.agent_type.value == 'OpenAI Functions':
+                self.get_ruannble_comp('bound').max_tokens = max_tokens
 
 
         def set_temperature(self, temperature: int)-> None:
-                if self.config.agent_type.value == 'ReAct':
-                        self.agent_executor.agent.llm_chain.llm.temperature = temperature
-                if self.config.agent_type.value == 'OpenAI Functions':
-                        self.get_ruannble_comp('bound').temperature = temperature        
+                # if self.config.agent_type.value == 'ReAct':
+                #         self.agent_executor.agent.llm_chain.llm.temperature = temperature
+                # if self.config.agent_type.value == 'OpenAI Functions':
+                self.get_ruannble_comp('bound').temperature = temperature        
 
         def delete_scratchpad_logs(self)-> None:
                 try:
