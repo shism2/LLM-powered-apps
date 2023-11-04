@@ -8,7 +8,7 @@ from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
 from utils.external_memories import SimpleListChatMemory
 from utils.get_llm import get_base_llm
-from agent_specific.configurations import Configurations, folder_existence_check
+from agent_specific.configurations import Configurations
 from agent_specific.CustomAgents import Agent
 
 
@@ -27,7 +27,6 @@ args = parser.parse_args()
 
 ## Create objects
 config = Configurations(**vars(args))
-folder_existence_check(config)
 llms = [get_base_llm(config)]    
 agents = [Agent(llms[0], config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)

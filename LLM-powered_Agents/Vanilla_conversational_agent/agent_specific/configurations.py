@@ -1,6 +1,6 @@
 import os
 from typing import Literal
-from pydantic import BaseModel, Field 
+from pydantic import BaseModel, Field, root_validator
 from agent_specific.agent_enums import Search, RetrievalChainType, AzureDeploymentName, Boolean, Agentype
 
 class Configurations(BaseModel):
@@ -14,8 +14,16 @@ class Configurations(BaseModel):
     streaming:Boolean = Field(default=Boolean.true, description="whether to stream the final output or not")
     provider: Literal['AzureChatOpenAI', 'ChatOpenAI'] = Field(default='ChatOpenAI', description="provider for foundation llm")
 
+    @root_validator
+    def folder_existence_check(cls, values):
+        for k, v in values.items():
+            if (k.split('_folder')[-1]=='') and (not os.path.exists(v)):
+                os.makedirs(v)  
+        return values
 
-def folder_existence_check(config: Configurations)-> None:
-    for k, v in config:
-        if (k.split('_folder')[-1]=='') and (not os.path.exists(v)):
-            os.makedirs(v)  
+
+
+# def folder_existence_check(config: Configurations)-> None:
+#     for k, v in config:
+#         if (k.split('_folder')[-1]=='') and (not os.path.exists(v)):
+#             os.makedirs(v)  
