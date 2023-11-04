@@ -19,7 +19,7 @@ from AgentTools.web_search_tools import get_web_search_tools
 from AgentTools.math_tools import GetFromWolfram
 from AgentTools.time_tools import GetFromDatetimeModule
 from AgentTools.python_repl_tools import GetLangChainPythonRepl
-from configurations import Configurations
+from agent_specific.configurations import Configurations
 
 def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> List[Tool]:
         search_tool = get_web_search_tools(config)

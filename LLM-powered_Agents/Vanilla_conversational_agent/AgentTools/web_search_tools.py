@@ -4,12 +4,12 @@ from langchain.utilities import SerpAPIWrapper, GoogleSearchAPIWrapper
 from langchain.retrievers.you import YouRetriever
 from typing import Type
 from langchain.agents import Tool
-from get_llm import get_base_llm
+from utils.get_llm import get_base_llm
 from langchain.chains import RetrievalQA
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool, StructuredTool
 from utils.load_vars import get_param
-from configurations import Configurations
+from agent_specific.configurations import Configurations
 from dotenv import load_dotenv
 _ = load_dotenv('.env')
 

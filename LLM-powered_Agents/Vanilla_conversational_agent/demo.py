@@ -2,14 +2,14 @@ import os, sys
 sys.path.extend(['..', '../..'])
 from utils.load_vars import get_param
 import argparse
-import agent_enums
+from agent_specific import agent_enums
 import gradio as gr
 from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
-from get_llm import get_base_llm
-from external_memories import SimpleListChatMemory
-from configurations import Configurations, folder_existence_check
-from CustomAgents import Agent
+from utils.external_memories import SimpleListChatMemory
+from utils.get_llm import get_base_llm
+from agent_specific.configurations import Configurations, folder_existence_check
+from agent_specific.CustomAgents import Agent
 
 
 ## argments
@@ -57,9 +57,9 @@ def qna(human_message, temperature, max_tokens):
         return GUI_CHAT_RECORD.chat_history, ''
     except Exception as e:
         sys.stdout = original_stdout
-        # with open(os.path.join(config.scratchpad_log_folder, 'scratch_log.log'), 'w') as file:  
-        #     file.write("Temporary Error.")  
         agents[0].delete_scratchpad_logs()
+        with open(os.path.join(config.scratchpad_log_folder, 'scratch_log.log'), 'w') as file:  
+            file.write('----- Error -----\n'+str(e))  
         raise gr.Error(e)
 
 def agent_type_change(agent_type, provider):
