@@ -1,11 +1,13 @@
 import os, sys
 sys.path.extend(['..', '../..'])
-from utils import load_envs
 import requests
 import datetime, pytz
 from typing import Type
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool, StructuredTool
+from dotenv import load_dotenv
+_ = load_dotenv('.env')
+
 
 '''
 OpenWeatherMap Tool

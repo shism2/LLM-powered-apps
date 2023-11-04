@@ -1,8 +1,9 @@
 import os, sys
 sys.path.extend(['..', '../..'])
-from utils import load_envs
 from langchain.utilities import WolframAlphaAPIWrapper
 from langchain.agents import Tool
+from dotenv import load_dotenv
+_ = load_dotenv('.env')
 
 
 '''

@@ -57,34 +57,52 @@ def qna(human_message, temperature, max_tokens):
         sys.stdout = original_stdout
         return GUI_CHAT_RECORD.chat_history, ''
     except Exception as e:
+        with open(os.path.join(config.scratchpad_log_folder, 'scratch_log.log'), 'w') as file:  
+            file.write("Temporary Error.")  
+        agents[0].delete_scratchpad_logs()
         raise gr.Error(e)
 
-def agent_type_change(agent_type):
+def agent_type_change(agent_type, provider):
     global agents, llms
-    config = Configurations(**vars(args))
     try:
-        if agent_type == 'OpenAI Functions':
-            config.agent_type = agent_enums.Agentype.openai
-            gr.Info("Agent type chaged to OpenAI Functions. All chat history is deleted.")
-        elif agent_type == 'ReAct':
-            config.agent_type = agent_enums.Agentype.react
-            gr.Info("Agent type chaged to ReAct. All chat history is deleted.")
+        config = Configurations(**vars(args))
+        config.provider = provider        
+        if agent_type == 'OpenAI Functions': config.agent_type = agent_enums.Agentype.openai
+        elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
         llms[0] = get_base_llm(config)     
         agents[0] = Agent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
+        gr.Info(f"Agent type chaged to {agent_type}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
     except Exception as e:
             raise gr.Error(e)
 
+
+def llm_change(provider, agent_type):
+    global agents, llms
+    try:
+        config = Configurations(**vars(args))
+        config.provider = provider
+        if agent_type == 'OpenAI Functions': config.agent_type = agent_enums.Agentype.openai
+        elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
+        llms[0] = get_base_llm(config)     
+        agents[0] = Agent(llms[0], config=config)
+        GUI_CHAT_RECORD.clear_memory()
+        gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
+        return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
+    except Exception as e:
+        raise gr.Error(e)
+
+
 def append_system_message_func(msg):
     global agents, llms
     new_msg = agents[0].append_sysem_msg(msg)
-    return new_msg
+    return new_msg, ''
 
 def reset_system_msg_func():
     global agents, llms
     original_msg = agents[0].reset_system_msg()
-    return original_msg
+    return original_msg, ''
 
 
 
@@ -92,8 +110,10 @@ def reset_system_msg_func():
 with gr.Blocks(title='Conversational Agent') as demo:  
     gr.Markdown(f"# Conversational Agent")  
     with gr.Row():
-        agent_type_btn = gr.Radio(["OpenAI Functions", "ReAct"], label="Agent type", value="OpenAI Functions", interactive=True)
-        llm_btn = gr.Radio(["gpt-3.5", "gpt-4", "llama2-7b", "llama2-13b"], label="LLM", value="gpt-4", interactive=False)
+        agent_type_btn = gr.Radio(["OpenAI Functions", "ReAct"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
+        # provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI", "llama2", "Anthropic"], label="LLM", value=agents[0].config.provider, interactive=True)
+        provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="LLM", value=agents[0].config.provider, interactive=True)
+
     
     chatbot_window = gr.Chatbot(height=450) #chatbot acts as chat history window
     with gr.Accordion(label="Settings", open=False):
@@ -113,9 +133,10 @@ with gr.Blocks(title='Conversational Agent') as demo:
                 with gr.Row():
                     max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1)
     
-    agent_type_btn.change(agent_type_change, [agent_type_btn], [system_msg, chatbot_window])
-    append_system_message_btn.click(append_system_message_func, inputs=[append_system_message], outputs=[system_msg])
-    reset_system_message_btn.click(reset_system_msg_func, inputs=[], outputs=[system_msg])
+    agent_type_btn.change(agent_type_change, [agent_type_btn, provider_btn], [system_msg, chatbot_window])
+    provider_btn.change(llm_change, [provider_btn, agent_type_btn], [system_msg, chatbot_window])
+    append_system_message_btn.click(append_system_message_func, inputs=[append_system_message], outputs=[system_msg, append_system_message])
+    reset_system_message_btn.click(reset_system_msg_func, inputs=[], outputs=[system_msg, append_system_message])
 
     with gr.Row():
         with gr.Column():
@@ -141,5 +162,5 @@ with gr.Blocks(title='Conversational Agent') as demo:
     demo.load(read_logs_from_file, scratchpad_log_folder, agent_scratchpad, every=1)
 
 
-gr.close_all()    
-demo.queue().launch(share=True)
+gr.close_all()  
+demo.queue(max_size =1).launch(share=True)

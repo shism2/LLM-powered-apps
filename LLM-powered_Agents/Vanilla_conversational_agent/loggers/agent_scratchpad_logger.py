@@ -20,4 +20,8 @@ class ScratchpadLogger:
 
 def read_logs_from_file(file_path):
     with open(os.path.join(file_path, 'scratch_log.log'), "r") as f:
-        return f.read()
+        try:
+            return f.read()
+        except:
+            return "TEMPORARY ERROR"
+

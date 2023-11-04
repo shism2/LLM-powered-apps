@@ -1,8 +1,8 @@
 import os
 import pickle  
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional, List
+from dotenv import load_dotenv
 _ = load_dotenv('.env')
 
 

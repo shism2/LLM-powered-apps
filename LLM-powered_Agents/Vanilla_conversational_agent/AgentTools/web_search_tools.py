@@ -1,6 +1,5 @@
 import os, sys
 sys.path.extend(['..', '../..'])
-from utils import load_envs
 from langchain.utilities import SerpAPIWrapper, GoogleSearchAPIWrapper
 from langchain.retrievers.you import YouRetriever
 from typing import Type
@@ -11,6 +10,9 @@ from pydantic import BaseModel, Field
 from langchain.tools import BaseTool, StructuredTool
 from utils.load_vars import get_param
 from configurations import Configurations
+from dotenv import load_dotenv
+_ = load_dotenv('.env')
+
 
 '''
 Tranditonal Google API tool

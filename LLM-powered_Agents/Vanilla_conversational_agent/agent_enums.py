@@ -1,8 +1,8 @@
 from enum import Enum
 
 class Agentype(Enum):
-    openai = 'openai functioncall'
-    react = 'zeroshot react'
+    openai = 'OpenAI Functions'
+    react = 'ReAct'
 
 class Search(Enum):
     Google = 'google'
