@@ -19,7 +19,7 @@ The tools currently compatible with this agent fall into five categories:
 
 To experience the Vanilla Conversational Agent, follow these three steps:
   
-### Step 1: Copy contents
+### Step 1: Clone repo
 
 Clone the entire repository from https://github.com/Taekyo-Lee/LLM-powered-apps.git and navigate to the **Vanilla_conversation_agent** directory in the cloned repository. Note that there are necessary files outside of **Vanilla_conversation_agent** directory. So do not just copy the contents only in **Vanilla_conversation_agent** directory. 
 
