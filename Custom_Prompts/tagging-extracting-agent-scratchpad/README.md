@@ -20,7 +20,7 @@ Action:
   }
 }
 
-The oldest member of BTS is Jin, and his birth month is December. He was born on December 4, 1992.Action:
+The oldest member of BTS is Jin, and his birth month is December. He was born on December 4, 1992.
 
 Action:
 
