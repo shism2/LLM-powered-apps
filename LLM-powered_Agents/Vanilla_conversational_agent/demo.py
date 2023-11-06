@@ -1,5 +1,9 @@
+# Path and environment variables
 import os, sys
 sys.path.extend(['..', '../..'])
+from dotenv import load_dotenv
+_ = load_dotenv('../../.env')
+
 from utils.load_vars import get_param
 import argparse
 from agent_specific import agent_enums
