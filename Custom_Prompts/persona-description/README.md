@@ -80,4 +80,4 @@ response = chain.invoke({'persona':persona})
 print(response.additional_kwargs['function_call']['arguments'])
 ```
 
-Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts) and download [persona-description/nb_persona-description.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-description/nb_persona-description.ipynb) file.
+Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/persona-description) and download [persona-description/nb_persona-description.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-description/nb_persona-description.ipynb) file.

@@ -47,4 +47,4 @@ response = chain.stream({'persona':persona, 'input': 'Life is so boring. Why is 
 streaming_output(response)
 ```
 
-Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts) and download [persona-based-dialog/nb_persona-based-dialog.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-based-dialog/nb_persona-based-dialog.ipynb) file.
+Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/persona-based-dialog) and download [persona-based-dialog/nb_persona-based-dialog.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-based-dialog/nb_persona-based-dialog.ipynb) file.

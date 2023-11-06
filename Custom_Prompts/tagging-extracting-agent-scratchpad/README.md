@@ -133,4 +133,4 @@ response = chain.invoke({'task':task, 'scratchpad':scratchpad})
 print(response.additional_kwargs['function_call']['arguments'])
 ```
 
-Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts) and download [tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb) file.
+Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/tagging-extracting-agent-scratchpad) and download [tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb) file.
