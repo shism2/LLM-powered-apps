@@ -78,7 +78,6 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
                 )  # RunnablePassthrough.assign?
 
                 system_msg_break_point = 'You have access to the following tools:'
-                agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
         
         
         if config.agent_type.value == 'OpenAI Functions':                
@@ -96,8 +95,8 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
                 ) | prompt | llm_with_functions | OpenAIFunctionsAgentOutputParser() # This parser contains either agent's intermediate step or final message                
                 
                 system_msg_break_point = None
-                agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
-
+        
+        agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
         return agent_executor, system_msg_break_point
 
 

@@ -95,6 +95,14 @@ def llm_change(provider, agent_type):
         raise gr.Error(e)
 
 
+def clear_memory():
+    global agents
+    try:
+        agents[0].agent_executor.memory.clear()
+        gr.Info(f"Agent's memory has been reset. Agent forgets every conversation so far.")
+    except Exception as e:
+        raise gr.Error(e)
+
 def append_system_message_func(msg):
     global agents, llms
     new_msg = agents[0].append_sysem_msg(msg)
@@ -148,6 +156,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
             with gr.Row():
                 run_btn = gr.Button("Run")
                 clr_screen = gr.Button("Clear screen")
+                reset_memory = gr.Button("Reset memory")
             with gr.Row(): 
                 gr.Examples(
                     examples=["지금 몇시야?", "지금 뉴욕 날씨 어때?", "현재 기준으로 BTS의 최연장자의 나이를 log_10()에 넣으면 답이 뭐야?", 
@@ -159,6 +168,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
 
     run_btn.click(qna, inputs=[question, temperature, max_tokens], outputs=[chatbot_window, question])
     clr_screen.click(GUI_CHAT_RECORD.clear_memory, inputs=[], outputs=[chatbot_window])
+    reset_memory.click(clear_memory, inputs=[], outputs=[])
 
     demo.load(read_logs_from_file, scratchpad_log_folder, agent_scratchpad, every=1, queue=True)
 
