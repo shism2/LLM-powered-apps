@@ -1,0 +1,4 @@
+Think carefully, and then tag the text as instructed.
+
+Task:
+{task}
