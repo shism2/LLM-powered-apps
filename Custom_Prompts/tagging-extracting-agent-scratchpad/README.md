@@ -116,6 +116,7 @@ class Trajectory(BaseModel):
     actions: List[Action] = Field(description="A sequential list of actions taken by the agent in response to the task.")
     observations: List[Observation] = Field(description="A series of observations made by the agent throughout the task execution.")
 
+trajectory_getting_func = convert_pydantic_to_openai_function(Trajectory)
 
 def get_OpenAI_chain(provider: Literal['ChatOpenAI', 'AzureChatOpenAI'], model_or_deployment_name: str):
     if provider == 'ChatOpenAI':
@@ -132,4 +133,4 @@ response = chain.invoke({'task':task, 'scratchpad':scratchpad})
 print(response.additional_kwargs['function_call']['arguments'])
 ```
 
-Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts) and download [persona-based-dialog/nb_persona-based-dialog.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-based-dialog/nb_persona-based-dialog.ipynb).ipynb file.
+Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts) and download [tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/tagging-extracting-agent-scratchpad/nb_tagging-extracting-agent-scratchpad.ipynb) file.
