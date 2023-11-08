@@ -10,8 +10,8 @@ from agent_specific import agent_enums
 import gradio as gr
 from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
-from utils.external_memories import SimpleListChatMemory
-from utils.get_llm import get_base_llm
+from utils.agent_components.external_memories import SimpleListChatMemory
+from utils.agent_components.get_llm import get_base_llm
 from agent_specific.configurations import Configurations
 from agent_specific.CustomAgents import Agent
 

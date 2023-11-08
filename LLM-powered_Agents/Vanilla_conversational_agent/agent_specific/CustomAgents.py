@@ -1,4 +1,5 @@
-import os
+import os, sys
+sys.path.extend(['..', '../..'])
 import langchain
 from langchain.agents import initialize_agent, AgentType, Tool
 from typing import List, Any, Literal
@@ -15,11 +16,11 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.memory import ConversationBufferMemory
 
 ### Custom tools
-from AgentTools.weather_tools import GetFromOpenWeatherMap
-from AgentTools.web_search_tools import get_web_search_tools
-from AgentTools.math_tools import GetFromWolfram
-from AgentTools.time_tools import GetFromDatetimeModule
-from AgentTools.python_repl_tools import GetLangChainPythonRepl
+from utils.agent_tools.weather_tools import GetFromOpenWeatherMap
+from utils.agent_tools.web_search_tools import get_web_search_tools
+from utils.agent_tools.math_tools import GetFromWolfram
+from utils.agent_tools.time_tools import GetFromDatetimeModule
+from utils.agent_tools.python_repl_tools import GetLangChainPythonRepl
 from agent_specific.configurations import Configurations
 
 
