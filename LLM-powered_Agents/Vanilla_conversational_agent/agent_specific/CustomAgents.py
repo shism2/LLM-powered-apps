@@ -60,13 +60,20 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
         tools = get_tools(config)
 
         if config.agent_type.value == 'ReAct':         
-                prompt = hub.pull("jet-taekyo-lee/time-aware-react-multi-input-json")
+                obj = hub.pull("jet-taekyo-lee/time-aware-react-multi-input-json")
+                prompt = ChatPromptTemplate.from_messages([
+                    obj.messages[0],
+                    MessagesPlaceholder(variable_name="chat_history"),    
+                    obj.messages[1],                        
+                ])
                 # with open('../../Custom_Prompts/time-seneitive-react/system_msg.txt', 'r') as f:
                 #         prompt.messages[0].prompt.template = f.read()
                  
-                human_msg = copy.deepcopy(prompt.messages[1])
-                prompt.messages[1] = MessagesPlaceholder(variable_name="chat_history")
-                prompt.messages.append(human_msg)                
+                # human_msg = copy.deepcopy(prompt.messages[1])
+                # prompt.messages[1] = MessagesPlaceholder(variable_name="chat_history")
+                # prompt.messages.append(human_msg)    
+
+                
                 prompt = prompt.partial(
                         tools=render_text_description_and_args(tools),
                         tool_names=", ".join([t.name for t in tools]),
