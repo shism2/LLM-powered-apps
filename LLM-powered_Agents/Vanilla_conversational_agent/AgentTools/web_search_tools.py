@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 _ = load_dotenv('.env')
 
 
-# for safe  
+# for robustness
 def get_query_from_string(s):  
     # Check if string is a list  
     if s.startswith('[') and s.endswith(']'):  
