@@ -1,12 +1,12 @@
 from enum import Enum
 
 class Agentype(Enum):
-    openai = 'OpenAI Functions'
+    openai = 'OpenAI_Functions'
     react = 'ReAct'
 
 class Search(Enum):
     Google = 'google'
-    Serp = 'Serp AIP'
+    Serp = 'Serp_API'
     YDC = 'You.com'
 
 class RetrievalChainType(Enum):

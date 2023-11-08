@@ -22,7 +22,7 @@ def GetFromGoogleAPI()-> Tool:
     tool = Tool(
         name="Googling_from_Google",
         func=search.run,
-        description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a string object."
+        description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a single string not a list. Never pass in ['string', $query], Just pass in $query."
     )
     return tool
 
@@ -31,12 +31,13 @@ def GetFromGoogleAPI()-> Tool:
 Serp API tool
 https://serpapi.com/
 '''
+
 def GetFromSerpAPI()-> Tool:
     search = SerpAPIWrapper()
     tool = Tool(
         name="Googling_from_SerpAPI",
         func=search.run,
-        description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a string object."
+        description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a single string not a list. Never pass in ['string', $query], Just pass in $query."
     )
     return tool
 
@@ -58,7 +59,7 @@ class GetFromYDCAPI(StructuredTool):
         super().__init__(*args, **kwargs)
         self.qa_chain = qa_chain
     name = 'GetFromYDC'
-    description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a string object."
+    description="This is useful for when you need to search Google to answer questions. You should ask targeted questions. Input should be a single string not a list. Never pass in ['string', $query], Just pass in $query."
     args_schema : Type[GetFromYDCAPIArgs] = GetFromYDCAPIArgs
 
     class Config:
@@ -74,7 +75,7 @@ class GetFromYDCAPI(StructuredTool):
 def get_web_search_tools(config)-> Tool:
     if config.search_tool.value == 'google':
         return GetFromGoogleAPI()
-    if config.search_tool.value == 'Serp AIP':
+    if config.search_tool.value == 'Serp_API':
         return GetFromSerpAPI()
     if config.search_tool.value == 'You.com':
         qa_chain = ydc_qa_chain(config)

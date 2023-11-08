@@ -68,7 +68,7 @@ def agent_type_change(agent_type, provider):
     try:
         config = Configurations(**vars(args))
         config.provider = provider        
-        if agent_type == 'OpenAI Functions': config.agent_type = agent_enums.Agentype.openai
+        if agent_type == 'OpenAI_Functions': config.agent_type = agent_enums.Agentype.openai
         elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
         llms[0] = get_base_llm(config)     
         agents[0] = Agent(llms[0], config=config)
@@ -84,7 +84,7 @@ def llm_change(provider, agent_type):
     try:
         config = Configurations(**vars(args))
         config.provider = provider
-        if agent_type == 'OpenAI Functions': config.agent_type = agent_enums.Agentype.openai
+        if agent_type == 'OpenAI_Functions': config.agent_type = agent_enums.Agentype.openai
         elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
         llms[0] = get_base_llm(config)     
         agents[0] = Agent(llms[0], config=config)
@@ -119,7 +119,7 @@ def reset_system_msg_func():
 with gr.Blocks(title='Conversational Agent') as demo:  
     gr.Markdown(f"# Conversational Agent")  
     with gr.Row():
-        agent_type_btn = gr.Radio(["OpenAI Functions", "ReAct"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
+        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
         # provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI", "llama2", "Anthropic"], label="LLM", value=agents[0].config.provider, interactive=True)
         provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="LLM", value=agents[0].config.provider, interactive=True)
 
