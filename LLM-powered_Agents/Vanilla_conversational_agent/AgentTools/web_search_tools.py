@@ -31,7 +31,7 @@ def get_query_from_string(s):
 '''
 Tranditonal Google API tool
 '''
-class MyGoogleSearchAPIWrapper(SerpAPIWrapper):
+class MyGoogleSearchAPIWrapper(GoogleSearchAPIWrapper):
     def run(self, Query: str)-> str:
         return super().run(get_query_from_string(Query)) 
     def arun(self, Query: str)-> str:
