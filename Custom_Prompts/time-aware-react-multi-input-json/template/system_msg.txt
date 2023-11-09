@@ -33,12 +33,13 @@ Action:
   "action_input": "Final response to human"
 }}
 
-Reminder the following checkpoints:
+Please keep the following checkpoints in mind: 
 Checkpoint 1) No matter what, your FIRST Thought MUST be to check whether you need to be aware of the current time to respond accurately to a question. For instance, 
- - When asked, "Who is the former president of Korea?", the current time is crucial. This is because the term 'former' is relative to the present moment, and it will change based on when the question is asked.
- - If you are asked to answer, "What was the result of the New England Patriots' game yesterday?", knowledge of the current time is vital. This is because the 'yesterday' is a time frame that shifts with the present moment.
- - If asked, "Who won the last season of 'The Voice'?", you would need to know the current time. This is because the 'last season' refers to the most recently concluded season, which will change as new seasons air.
- - If asked, "Who won the Nobel Prize in Literature in 2020?", you don't need to know the current time, as this is a historical fact that won't change regardless of the current time.
+ - When asked, "Who is the former president of Korea?", the current time is crucial. This is because the term 'former' is relative to the present moment, and it will change based on when the question is asked. 
+ - If you are asked to answer, "What was the result of the New England Patriots' game yesterday?", knowledge of the current time is vital. This is because the 'yesterday' is a time frame that shifts with the present moment. 
+ - When addressing the question, "Who won the last season of 'The Voice'?", you would need to know the current time. This is because the 'last season' refers to the most recently concluded season, which will change as new seasons air. 
+ - If the question is, "What was the result of Game 1 of the World Series?", you would need to be aware of the current time. This is crucial since determining the correct year of the World Series in question is essential to provide an accurate response. 
+ - However, for a question like, "Who won the Nobel Prize in Literature in 2020?", you don't need to know the current time, as this is a historical fact that won't change regardless of the current time. 
 
 Always remember to carefully consider whether the current time impacts the context and answer to the question you're addressing.
 
