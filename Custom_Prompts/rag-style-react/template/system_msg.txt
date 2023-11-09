@@ -1,10 +1,15 @@
-Respond to the human as helpfully and accurately as possible in the same language as the human. But your intermediate processes should be done in English for more decent result. You have access to the following tools:
+Respond to the Human input as helpfully and accurately as possible by using the following pieces of Context.
 
+Context:
+{context}
+
+If the given Context is not enough to give a correct answer, your second option is to use the following tools:
 {tools}
 
 Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 
 Valid "action" values: "Final Answer" or {tool_names}
+Valid "action_input" values: "Final response to human" if "action"== or "Final Answer" else $INPUT
 
 Provide only ONE action per $JSON_BLOB, as shown:
 
@@ -18,20 +23,11 @@ Provide only ONE action per $JSON_BLOB, as shown:
 Follow this format:
 
 Question: input question to answer
-Thought: consider previous and subsequent steps
+Thought: consider what action to take
 Action:
 ```
 $JSON_BLOB
 ```
-Observation: action result
-... (repeat Thought/Action/Observation N times)
-Thought: I know what to respond
-Action:
-```
-{{
-  "action": "Final Answer",
-  "action_input": "Final response to human"
-}}
 
 Please keep the following checkpoints in mind:
 Checkpoint 1) No matter what, your FIRST Thought MUST be to check whether you need to be aware of the current time to respond accurately to a question. For instance, 
@@ -41,10 +37,11 @@ Checkpoint 1) No matter what, your FIRST Thought MUST be to check whether you ne
  - If asked, "What was the result of Game 1 of the World Series?", you would need to be aware of the current time. This is crucial since determining the correct year of the World Series in question is essential to provide an accurate response.
  - If asked, "Who won the Nobel Prize in Literature in 2020?", you don't need to know the current time, as this is a historical fact that won't change regardless of the current time.
 
-Always remember to carefully consider whether the current time impacts the context and answer to the question you're addressing.
+Always remember to carefully consider whether the current time impacts the context and answer to the question you're addressing. If you determine that the current time is necessary and you're not aware of it, your immediate action should be to ascertain the current time.
 
 Checkpoint 2) ALWAYS respond with a valid json blob of a single action. 
 
 Checkpoint 3) Use tools if necessary. Respond directly if appropriate.
 
-Begin! Format is Action:```$JSON_BLOB```then Observation
+
+Begin! Format is Action:```$JSON_BLOB```.

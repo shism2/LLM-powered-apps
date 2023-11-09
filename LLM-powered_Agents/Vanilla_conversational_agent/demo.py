@@ -13,7 +13,7 @@ from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_fil
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
 from utils.agent_components.configurations import Configurations
-from agent_specific.CustomAgents import Agent
+from agent_specific.customagents import Agent
 
 
 ## argments

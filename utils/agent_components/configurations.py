@@ -7,7 +7,7 @@ class Configurations(BaseModel):
     agent_type: Agentype = Field(default=Agentype.openai, description="LangChain agent type")
     retrieval_chain_type: RetrievalChainType = Field(default=RetrievalChainType.stuff, description="Chain type for LangChain Retrieval QA chain")
     api_retrieval_chain_type: RetrievalChainType = Field(default=RetrievalChainType.stuff, description="Chain type for LangChain Retrieval QA chain, in case search API needs Retrieval QA chain such as YDC API")
-    search_tool: Search = Field(default=Search.YDC, description="Google search API to use")
+    search_tool: Search = Field(default=Search.Serp, description="Google search API to use")
     verbose: Boolean = Field(default=Boolean.true, description="verboseness for agent")
     qna_log_folder:str = Field(default='loggers/qna_logs', description="folder qna logs are stored")
     scratchpad_log_folder:str = Field(default='loggers/scratchpad_logs', description="folder agent's intermediate-step logs are stored")

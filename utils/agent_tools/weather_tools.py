@@ -52,9 +52,9 @@ class GetFromOpenWeatherMap(StructuredTool):
 
 
         if Days_from_now == 0:
-            return f"year-month-day: {dt.year}-{dt.month}-{dt.day}, hour-minute: {dt.hour}-{dt.minute}, temperature: {temperature}, humidity: {humidity}, wind_speed: {wind_speed}, weather_summary: {weather_summary}."
+            return f"timezone: {region}, current time-> year-month-day: {dt.year}-{dt.month}-{dt.day}, hour-minute: {dt.hour}-{dt.minute}, temperature: {temperature}, humidity: {humidity}, wind_speed: {wind_speed}, weather_summary: {weather_summary}."
         else:
-            return f"year-month-day: {dt.year}-{dt.month}-{dt.day}, temperature: {temperature}, humidity: {humidity}, wind_speed: {wind_speed}, weather_summary: {weather_summary}."
+            return f"timezone: {region}, current time-> year-month-day: {dt.year}-{dt.month}-{dt.day}, temperature: {temperature}, humidity: {humidity}, wind_speed: {wind_speed}, weather_summary: {weather_summary}."
 
     async def _arun(self, IANA_timezone: str, Days_from_now: int=0)-> str:
         raise NotImplementedError("Does not support async operation yet.")
