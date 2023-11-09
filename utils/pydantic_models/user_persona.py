@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 import json 
 from typing import List, Tuple, Literal
 from enum import Enum
-from utils.pydantic_models.enums import Nations, Gender, Languages, Devices, Characteristics, Hobbies, Education_level
+from utils.pydantic_models.persona_enums import Nations, Gender, Languages, Devices, Characteristics, Hobbies, Education_level
 from faker import Faker
 import random
 
