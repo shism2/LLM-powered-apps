@@ -6,7 +6,7 @@ from agent_specific.agent_enums import Search, RetrievalChainType, AzureDeployme
 class Configurations(BaseModel):
     agent_type: Agentype = Field(default=Agentype.openai, description="LangChain agent type")
     retrieval_chain_type: RetrievalChainType = Field(default=RetrievalChainType.stuff, description="Chain type for LangChain Retrieval QA chain")
-    # llm_search_api_chain_type: RetrievalChainType = Field(default=RetrievalChainType.stuff, description="Chain type for LangChain Retrieval QA chain, in case search API needs Retrieval QA chain such as YDC API")
+    api_retrieval_chain_type: RetrievalChainType = Field(default=RetrievalChainType.stuff, description="Chain type for LangChain Retrieval QA chain, in case search API needs Retrieval QA chain such as YDC API")
     search_tool: Search = Field(default=Search.YDC, description="Google search API to use")
     verbose: Boolean = Field(default=Boolean.true, description="verboseness for agent")
     qna_log_folder:str = Field(default='loggers/qna_logs', description="folder qna logs are stored")
@@ -22,8 +22,3 @@ class Configurations(BaseModel):
         return values
 
 
-
-# def folder_existence_check(config: Configurations)-> None:
-#     for k, v in config:
-#         if (k.split('_folder')[-1]=='') and (not os.path.exists(v)):
-#             os.makedirs(v)  

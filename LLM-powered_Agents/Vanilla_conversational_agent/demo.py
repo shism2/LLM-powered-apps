@@ -12,7 +12,7 @@ from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
-from agent_specific.configurations import Configurations
+from utils.agent_components.configurations import Configurations
 from agent_specific.CustomAgents import Agent
 
 
@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='ChatOpenAI')
 parser.add_argument("--agent_type", type=agent_enums.Agentype, choices=list(agent_enums.Agentype), default=agent_enums.Agentype.openai)
 parser.add_argument("--retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
-# parser.add_argument("--llm_search_api_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
+parser.add_argument("--api_retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
 parser.add_argument("--verbose", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
 parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent_enums.Search), default=agent_enums.Search.Serp)
 parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')

@@ -21,7 +21,7 @@ from utils.agent_tools.web_search_tools import get_web_search_tools
 from utils.agent_tools.math_tools import GetFromWolfram
 from utils.agent_tools.time_tools import GetFromDatetimeModule
 from utils.agent_tools.python_repl_tools import GetLangChainPythonRepl
-from agent_specific.configurations import Configurations
+from utils.agent_components.configurations import Configurations
 
 
 ### For ReAct agent

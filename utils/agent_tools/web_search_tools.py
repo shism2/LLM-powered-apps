@@ -9,7 +9,7 @@ from langchain.chains import RetrievalQA
 from pydantic import BaseModel, Field
 from langchain.tools import BaseTool, StructuredTool
 from utils.load_vars import get_param
-from agent_specific.configurations import Configurations
+from utils.agent_components.configurations import Configurations
 import ast  
 from dotenv import load_dotenv
 _ = load_dotenv('.env')
@@ -80,7 +80,7 @@ class MyRetrievalQA(RetrievalQA):
 def ydc_qa_chain(config)-> RetrievalQA:
     yr = YouRetriever()
     llm = get_base_llm(config)
-    RetrievalQA_chain = MyRetrievalQA.from_chain_type(llm=llm, chain_type=config.retrieval_chain_type.value, retriever=yr)
+    RetrievalQA_chain = MyRetrievalQA.from_chain_type(llm=llm, chain_type=config.api_retrieval_chain_type.value, retriever=yr)
     return RetrievalQA_chain
 
 class GetFromYDCAPIArgs(BaseModel):
