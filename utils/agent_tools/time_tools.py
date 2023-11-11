@@ -26,7 +26,7 @@ class GetFromDatetimeModule(StructuredTool):
     def _run(self, IANA_timezone: str='Asia/Seoul')-> str:
         tz = pytz.timezone(IANA_timezone)  
         dt = datetime.datetime.now(tz)  
-        return f"timezone: {IANA_timezone}, current time-> year-month-day: {dt.year}-{dt.month}-{dt.day}, hour-minute: {dt.hour}-{dt.minute}"
+        return f"timezone: {IANA_timezone}, current time(year-month-day-hour-minute): {dt.year}-{dt.month}-{dt.day}-{dt.hour}-{dt.minute}"
 
     async def _arun(self, IANA_timezone: str)-> str:
         raise NotImplementedError("Does not support async operation yet.")
