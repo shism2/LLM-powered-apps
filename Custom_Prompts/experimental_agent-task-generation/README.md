@@ -43,4 +43,4 @@ answer = task_generation_chain.invoke({'tool_descriotions':tool_descriotions, 'n
 print(answer.content)
 ```
 
-Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/persona-based-dialog) and download [persona-based-dialog/nb_persona-based-dialog.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/persona-based-dialog/nb_persona-based-dialog.ipynb) file.
+Visit the provided [GitHub repo](https://github.com/Taekyo-Lee/LLM-powered-apps/tree/main/Custom_Prompts/experimental_agent-task-generation) and download [experimental_agent-task-generation/nb_experimental_agent-task-generation.ipynb](https://github.com/Taekyo-Lee/LLM-powered-apps/blob/main/Custom_Prompts/experimental_agent-task-generation/nb_experimental_agent-task-generation.ipynb) file.
