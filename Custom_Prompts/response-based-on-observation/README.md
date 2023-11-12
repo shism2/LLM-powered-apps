@@ -31,7 +31,7 @@ This prompt is designed for use in a subsequent chain after the ReAct agent chai
 - Step 3) Two input variables - 'task' (from the earlier chain) and 'observations' (from Step 2) - are input into the subsequent chain.  
 
 # How to play around?
-The following code snippet provides an example of how you can utilize the prompt with LLMs. You can swap out AzureChatOpenAI() for any LLM you want.
+The following code snippet provides an example of how you can utilize the prompt with LLMs.
 ```
 from langchain import hub
 from langchain.chat_models import AzureChatOpenAI

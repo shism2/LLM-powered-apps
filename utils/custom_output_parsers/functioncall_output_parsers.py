@@ -17,3 +17,5 @@ class ReActOutputJsonKeyStrParser():
         target_dict_blob = dict_blob[self.key] 
         output = '\n'.join(f"{i+1}.  {list(item.values())[0]}" for i, item in enumerate(target_dict_blob)) 
         return output
+
+

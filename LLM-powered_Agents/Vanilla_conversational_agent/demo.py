@@ -6,7 +6,7 @@ _ = load_dotenv('../../.env')
 
 from utils.load_vars import get_param
 import argparse
-from agent_specific import agent_enums
+from utils.agent_components import agent_enums
 import gradio as gr
 from loggers.qna_logger import get_qa_logger, logging_qa
 from loggers.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file

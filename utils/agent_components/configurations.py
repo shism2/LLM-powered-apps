@@ -1,7 +1,7 @@
 import os
 from typing import Literal
 from pydantic import BaseModel, Field, root_validator
-from agent_specific.agent_enums import Search, RetrievalChainType, AzureDeploymentName, Boolean, Agentype
+from utils.agent_components.agent_enums import Search, RetrievalChainType, AzureDeploymentName, Boolean, Agentype
 
 class Configurations(BaseModel):
     agent_type: Agentype = Field(default=Agentype.openai, description="LangChain agent type")

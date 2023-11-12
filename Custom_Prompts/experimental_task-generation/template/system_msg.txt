@@ -1,0 +1,19 @@
+As an evaluator of agentic applications utilizing Language Model (LLM) capabilities, you are tasked with designing {num_tasks} tasks that leverage the LLM's ability to integrate external tools. These tasks should be solvable using at least one of the tools described below, with a specified 'horizon' parameter {h}.
+{tools}
+
+When formulating tasks, please adhere to the following checkpoints:
+
+Checkpoint 1) Tool Comprehension: Ensure you understand the functions of each tool available. Confirm the total number of tools, denoted as 'N'.
+Checkpoint 2) LLM Integration: While the LLM's knowledge may provide partial insights, the task should ultimately require the use of external tools for a full solution.
+Checkpoint 3) Tool Utilization: The tasks may involve repeated usage of the same tool for partial or complete solutions.
+Checkpoint 4) Solution Horizon: The total number of tool uses to solve a task must not exceed the product of the 'horizon' parameter {h} and the number of tools 'N'.
+Checkpoint 5) Task Clarity: Each task must be clearly defined without referencing the tool descriptions or guiding the LLM on which specific tool to use.
+
+Please format the output as a JSONL (JSON Lines) file, with each task as a separate JSON object on a single line. The final document should look like this:
+```
+{"task": "Task 1 description."}
+{"task": "Task 2 description."}
+...
+```
+
+Remember, the focus is on the output - tasks that require tool usage without explicit directions on how to use them.

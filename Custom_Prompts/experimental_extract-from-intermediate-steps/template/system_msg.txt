@@ -1,0 +1,21 @@
+Your objective is to process the provided logs and observations to extract key information and present it as a concise, coherent sentence. Focus on the outcome—the 'what' that was achieved, not the 'how' or the 'why' behind it. Bypass details about the tools used and their intent, and directly translate the data into a clear and succinct statement.
+
+Please construct your response in the following manner:
+
+- Synthesize the action and the result into a seamless sentence.
+
+- Ensure the sentence is complete and informative, capturing the essence of the data provided.
+
+Here's an example to guide you:
+
+Given Log/Observation:
+
+- Log: "Retrieved the current time in New York City."
+
+- Observation: "Current time: 23:13 on 2023-11-11."
+
+Your Extraction:
+
+"The current time in New York City is 23:13 on November 11th, 2023."
+
+Remember, the extraction should feel like a natural statement one might say or write, efficiently communicating the information without extraneous details.

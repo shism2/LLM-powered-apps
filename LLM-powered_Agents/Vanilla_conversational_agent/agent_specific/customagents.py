@@ -16,11 +16,11 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.memory import ConversationBufferMemory
 
 ### Custom tools
-from utils.agent_tools.weather_tools import GetFromOpenWeatherMap
-from utils.agent_tools.web_search_tools import get_web_search_tools
-from utils.agent_tools.math_tools import GetFromWolfram
-from utils.agent_tools.time_tools import GetFromDatetimeModule
-from utils.agent_tools.python_repl_tools import GetLangChainPythonRepl
+from utils.agent_tools.tools.weather_tools import GetFromOpenWeatherMap
+from utils.agent_tools.tools.web_search_tools import get_web_search_tools
+from utils.agent_tools.tools.math_tools import GetFromWolfram
+from utils.agent_tools.tools.time_tools import GetFromDatetimeModule
+from utils.agent_tools.tools.python_repl_tools import GetLangChainPythonRepl
 from utils.agent_components.configurations import Configurations
 
 
