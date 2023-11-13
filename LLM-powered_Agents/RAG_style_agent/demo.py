@@ -12,7 +12,7 @@ from utils.loggings.qna_logger import get_qa_logger, logging_qa
 from utils.loggings.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
-from utils.agent_components.configurations import Configurations
+from utils.agent_components.configurations import Configurations, get_agent_type_enum
 from agent_specific.customagents import Agent
 
 
@@ -27,7 +27,7 @@ parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent
 parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')
 parser.add_argument("--scratchpad_log_folder", type=str, default='loggers/scratchpad_logs')
 parser.add_argument("--streaming", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
-parser.add_argument("--langsmith_project", type=str, default='Vanilla_agent_gradio_demo')
+parser.add_argument("--langsmith_project", type=str, default='RAG_style_agent_gradio_demo')
 args = parser.parse_args()
 
 ## LangSmith Project
@@ -72,8 +72,8 @@ def agent_type_change(agent_type, provider):
     try:
         config = Configurations(**vars(args))
         config.provider = provider        
-        if agent_type == 'OpenAI_Functions': config.agent_type = agent_enums.Agentype.openai
-        elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
+        config.agent_type = get_agent_type_enum(agent_type)
+        
         llms[0] = get_base_llm(config)     
         agents[0] = Agent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
@@ -88,8 +88,9 @@ def llm_change(provider, agent_type):
     try:
         config = Configurations(**vars(args))
         config.provider = provider
-        if agent_type == 'OpenAI_Functions': config.agent_type = agent_enums.Agentype.openai
-        elif agent_type == 'ReAct': config.agent_type = agent_enums.Agentype.react
+        config.agent_type = get_agent_type_enum(agent_type)
+       
+        
         llms[0] = get_base_llm(config)     
         agents[0] = Agent(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
@@ -123,7 +124,7 @@ def reset_system_msg_func():
 with gr.Blocks(title='Conversational Agent') as demo:  
     gr.Markdown(f"# Conversational Agent")  
     with gr.Row():
-        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
+        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct", "ReAct_RAG_style"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
         # provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI", "llama2", "Anthropic"], label="LLM", value=agents[0].config.provider, interactive=True)
         provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="LLM", value=agents[0].config.provider, interactive=True)
 

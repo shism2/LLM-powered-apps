@@ -22,3 +22,11 @@ class Configurations(BaseModel):
         return values
 
 
+def get_agent_type_enum(agent_type: str)-> Agentype:
+        if agent_type == 'OpenAI_Functions': 
+            agent_type_enum = Agentype.openai
+        elif agent_type == 'ReAct': 
+            agent_type_enum = Agentype.react    
+        elif agent_type == 'ReAct_RAG_style': 
+            agent_type_enum = Agentype.react_rag_style   
+        return agent_type_enum

@@ -3,6 +3,7 @@ from enum import Enum
 class Agentype(Enum):
     openai = 'OpenAI_Functions'
     react = 'ReAct'
+    react_rag_style = 'ReAct_RAG_style'
 
 class Search(Enum):
     Google = 'google'
