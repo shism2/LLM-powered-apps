@@ -133,7 +133,7 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
 
 
 
-class RAGStyleAgent:
+class ExperimentalAgent:
         def __init__(self, config:Configurations):
                 self.config = config
                 self.llm = get_base_llm(self.config)
@@ -214,8 +214,8 @@ class RAGStyleAgent:
                 except FileNotFoundError as e:
                         pass
 
+        @classmethod
+        def from_kwargs(cls, **kwargs):
+                config = Configurations(**kwargs)
+                return cls(config)
 
-
-def get_RAGStyleAgent(**kwargs):
-        config = Configurations(**kwargs)
-        return RAGStyleAgent(config)
