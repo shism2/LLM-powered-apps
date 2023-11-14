@@ -5,7 +5,8 @@ from langchain.agents import initialize_agent, AgentType, Tool
 from typing import List, Any, Literal
 import gradio as gr
 import copy
-
+from utils.agent_components.get_llm import get_base_llm
+from utils.agent_components.configurations import Configurations
 
 ### To get agents
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
@@ -68,18 +69,23 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
         else:
                 tools = tool_result
 
-        if config.agent_type.value == 'ReAct':       
+        try:
+                agent_type = config.agent_type.value
+        except AttributeError:
+                agent_type = config.agent_type
+        
+        if agent_type == 'ReAct':       
                 agent = get_ReAct_agents(llm=llm, tools=tools, RAG_style=False)
                 system_msg_break_point = 'You have access to the following tools:'
 
 
-        if config.agent_type.value == 'ReAct_RAG_style':         
+        if agent_type == 'ReAct_RAG_style':         
                 agent = get_ReAct_agents(llm=llm, tools=tools, RAG_style=True)
                 system_msg_break_point = 'You have access to the following tools:'
 
 
         
-        if config.agent_type.value == 'OpenAI_Functions':     
+        if agent_type == 'OpenAI_Functions':     
                 agent = get_OpenAI_Functions_agent(llm=llm, tools=tools)
                 system_msg_break_point = None
         
@@ -88,10 +94,11 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
 
 
 
-class RAGStyleAgentExecutor:
-        def __init__(self, llm, config:Configurations):
-                self.llm = llm
+class RAGStyleAgent:
+        def __init__(self, config:Configurations):
+                # self.llm = llm
                 self.config = config
+                self.llm = get_base_llm(self.config)
                 self.agent_executor, self.system_msg_break_point = get_custom_agent(self.llm, self.config)
                 # self.append_sysem_msg("Your final answer should be the same language as the query (It is ok to use English at intermediate steps).")
                 self.original_system_msg = (self.system_msg+' ')[:-1]
@@ -105,7 +112,10 @@ class RAGStyleAgentExecutor:
         
 
         def __call__(self, query)-> str:
-                return (self.agent_executor.invoke({'input':query}, {"metadata": {"agent_type": self.config.agent_type.value}}))['output']
+                try: agent_type = self.config.agent_type.value
+                except AttributeError: agent_type = self.config.agent_type
+                return (self.agent_executor.invoke({'input':query}, {"metadata": {"agent_type": agent_type}}))['output']
+                
 
 
         def get_ruannble_comp(self, target: Literal['prompt', 'llm'])->Any:
@@ -141,6 +151,7 @@ class RAGStyleAgentExecutor:
         def reset_system_msg(self)-> str:
                 try:
                         self.get_ruannble_comp('prompt').messages[0].prompt.template = (self.original_system_msg+' ')[:-1]
+                        gr.Info("Resetting system message succeeded!")
                         return self.system_msg
                 except Exception as e:
                         raise gr.Error(e)
@@ -164,4 +175,6 @@ class RAGStyleAgentExecutor:
 
 
 
-# def get_agent_excutor()
+def get_RAGStyleAgent(**kwargs):
+        config = Configurations(**kwargs)
+        return RAGStyleAgent(config)

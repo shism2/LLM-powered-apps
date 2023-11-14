@@ -21,6 +21,8 @@ class Configurations(BaseModel):
                 os.makedirs(v)  
         return values
 
+    class Config:  
+        use_enum_values = True
 
 def get_agent_type_enum(agent_type: str)-> Agentype:
         if agent_type == 'OpenAI_Functions': 

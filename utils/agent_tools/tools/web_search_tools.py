@@ -105,11 +105,13 @@ class GetFromYDCAPI(StructuredTool):
     
     
 def get_web_search_tools(config)-> Tool:
-    if config.search_tool.value == 'google':
+    try: search_tool = config.search_tool.value
+    except AttributeError: search_tool = config.search_tool
+    if search_tool == 'google':
         return GetFromGoogleAPI()
-    if config.search_tool.value == 'Serp_API':
+    if search_tool == 'Serp_API':
         return GetFromSerpAPI()
-    if config.search_tool.value == 'You.com':
+    if search_tool == 'You.com':
         qa_chain = ydc_qa_chain(config)
         return GetFromYDCAPI(qa_chain)
     

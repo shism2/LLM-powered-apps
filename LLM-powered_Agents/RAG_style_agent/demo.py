@@ -13,7 +13,7 @@ from utils.loggings.agent_scratchpad_logger import ScratchpadLogger, read_logs_f
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
 from utils.agent_components.configurations import Configurations, get_agent_type_enum
-from agent_specific.customagents import RAGStyleAgentExecutor
+from agent_specific.customagents import RAGStyleAgent
 
 
 ## argments
@@ -35,8 +35,7 @@ os.environ['LANGCHAIN_PROJECT'] = args.langsmith_project
 
 ## Create objects
 config = Configurations(**vars(args))
-llms = [get_base_llm(config)]    
-agents = [RAGStyleAgentExecutor(llms[0], config=config)]
+agents = [RAGStyleAgent(config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
 
@@ -48,13 +47,14 @@ for k, v in config:
 
 
 ## Gradio functions
-def qna(human_message, temperature, max_tokens):
+def qna(human_message, temperature, max_tokens, max_token_none):
     global agents, config, GUI_CHAT_RECORD
     original_stdout = sys.stdout 
     try:
         sys.stdout =ScratchpadLogger(config.scratchpad_log_folder)  
-        agents[0].set_temperature(temperature)        
-        agents[0].set_max_tokens(max_tokens)        
+        agents[0].set_temperature(temperature)    
+        if not max_token_none:    
+            agents[0].set_max_tokens(max_tokens)        
         response = agents[0](human_message)    
         GUI_CHAT_RECORD(human_message, response)
         logging_qa(qa_logger, human_message, response)
@@ -68,14 +68,12 @@ def qna(human_message, temperature, max_tokens):
         raise gr.Error(e)
 
 def agent_type_change(agent_type, provider):
-    global agents, llms
+    global agents
     try:
         config = Configurations(**vars(args))
         config.provider = provider        
-        config.agent_type = get_agent_type_enum(agent_type)
-        
-        llms[0] = get_base_llm(config)     
-        agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
+        config.agent_type = get_agent_type_enum(agent_type)        
+        agents[0] = RAGStyleAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Agent type chaged to {agent_type}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -84,15 +82,16 @@ def agent_type_change(agent_type, provider):
 
 
 def llm_change(provider, agent_type):
-    global agents, llms
+    global agents
     try:
         config = Configurations(**vars(args))
         config.provider = provider
         config.agent_type = get_agent_type_enum(agent_type)
        
         
-        llms[0] = get_base_llm(config)     
-        agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
+        # llms[0] = get_base_llm(config)     
+        # agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
+        agents[0] = RAGStyleAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -109,12 +108,12 @@ def clear_memory():
         raise gr.Error(e)
 
 def append_system_message_func(msg):
-    global agents, llms
+    global agents
     new_msg = agents[0].append_sysem_msg(msg)
     return new_msg, ''
 
 def reset_system_msg_func():
-    global agents, llms
+    global agents
     original_msg = agents[0].reset_system_msg()
     return original_msg, ''
 
@@ -124,8 +123,9 @@ def reset_system_msg_func():
 with gr.Blocks(title='Conversational Agent') as demo:  
     gr.Markdown(f"# Conversational Agent")  
     with gr.Row():
-        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct", "ReAct_RAG_style"], label="Agent type", value=agents[0].config.agent_type.value, interactive=True)
-        # provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI", "llama2", "Anthropic"], label="LLM", value=agents[0].config.provider, interactive=True)
+        try: agent_type = agents[0].config.agent_type.value
+        except AttributeError: agent_type = agents[0].config.agent_type
+        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct", "ReAct_RAG_style"], label="Agent type", value=agent_type, interactive=True)
         provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="LLM", value=agents[0].config.provider, interactive=True)
 
     
@@ -145,8 +145,11 @@ with gr.Blocks(title='Conversational Agent') as demo:
                 with gr.Row():
                     temperature = gr.Slider(label="Temperature", minimum=0.0, maximum=1, value=0.0, step=0.1)
                 with gr.Row():
-                    max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1)
-    
+                    with gr.Column():
+                        max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1)
+                    with gr.Column():
+                        max_token_none = gr.Checkbox(label="Remove the completion token limit", info="Allow as many completion tokens as your Tier allows", value=True, interactive=True)
+
     agent_type_btn.change(agent_type_change, [agent_type_btn, provider_btn], [system_msg, chatbot_window])
     provider_btn.change(llm_change, [provider_btn, agent_type_btn], [system_msg, chatbot_window])
     append_system_message_btn.click(append_system_message_func, inputs=[append_system_message], outputs=[system_msg, append_system_message])
@@ -171,7 +174,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
                     label='Example questions'
                 )
 
-    run_btn.click(qna, inputs=[question, temperature, max_tokens], outputs=[chatbot_window, question])
+    run_btn.click(qna, inputs=[question, temperature, max_tokens, max_token_none], outputs=[chatbot_window, question])
     clr_screen.click(GUI_CHAT_RECORD.clear_memory, inputs=[], outputs=[chatbot_window])
     reset_memory.click(clear_memory, inputs=[], outputs=[])
 
