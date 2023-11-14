@@ -200,7 +200,7 @@ class RAGStyleAgent:
 
 
 
-        def set_max_tokens(self, max_tokens:int)-> None:
+        def set_max_tokens(self, max_tokens:int|None)-> None:
                 self.get_ruannble_comp('llm').max_tokens = max_tokens
 
 

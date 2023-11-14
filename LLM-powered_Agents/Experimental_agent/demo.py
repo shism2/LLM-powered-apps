@@ -53,8 +53,11 @@ def qna(human_message, temperature, max_tokens, max_token_none):
     try:
         sys.stdout =ScratchpadLogger(config.scratchpad_log_folder)  
         agents[0].set_temperature(temperature)    
-        if not max_token_none:    
-            agents[0].set_max_tokens(max_tokens)        
+        if max_token_none:    
+            agents[0].set_max_tokens(None)
+        else:
+            agents[0].set_max_tokens(max_tokens)
+
         response, num_iter = agents[0](human_message, True)    
         GUI_CHAT_RECORD(human_message, response)
         logging_qa(qa_logger, human_message, response)
@@ -89,8 +92,6 @@ def llm_change(provider, agent_type):
         config.agent_type = get_agent_type_enum(agent_type)
        
         
-        # llms[0] = get_base_llm(config)     
-        # agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
         agents[0] = RAGStyleAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
@@ -118,6 +119,13 @@ def reset_system_msg_func():
     return original_msg, ''
 
 
+def activation_max_token(max_token_none):
+    if max_token_none:
+        return gr.Slider.update(label="Max tokens for completion", minimum=1, maximum=4096, value=0, step=1, interactive=False)
+        return 10
+    else:
+        return gr.Slider.update(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1, interactive=True)
+        return 100
 
 ## Gradio blcok
 with gr.Blocks(title='Conversational Agent') as demo:  
@@ -146,14 +154,14 @@ with gr.Blocks(title='Conversational Agent') as demo:
                     temperature = gr.Slider(label="Temperature", minimum=0.0, maximum=1, value=0.0, step=0.1)
                 with gr.Row():
                     with gr.Column():
-                        max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1)
+                        max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=0, step=1, interactive=False)
                     with gr.Column():
                         max_token_none = gr.Checkbox(label="Remove the completion token limit", info="Allow as many completion tokens as your Tier allows", value=True, interactive=True)
-
     agent_type_btn.change(agent_type_change, [agent_type_btn, provider_btn], [system_msg, chatbot_window])
     provider_btn.change(llm_change, [provider_btn, agent_type_btn], [system_msg, chatbot_window])
     append_system_message_btn.click(append_system_message_func, inputs=[append_system_message], outputs=[system_msg, append_system_message])
     reset_system_message_btn.click(reset_system_msg_func, inputs=[], outputs=[system_msg, append_system_message])
+    max_token_none.change(fn=activation_max_token, inputs=[max_token_none], outputs=[max_tokens])
 
     with gr.Row():
         with gr.Column():
