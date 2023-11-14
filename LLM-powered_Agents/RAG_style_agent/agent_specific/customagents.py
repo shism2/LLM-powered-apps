@@ -88,7 +88,7 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
 
 
 
-class Agent:
+class RAGStyleAgentExecutor:
         def __init__(self, llm, config:Configurations):
                 self.llm = llm
                 self.config = config
@@ -161,3 +161,7 @@ class Agent:
                                 pass
                 except FileNotFoundError as e:
                         pass
+
+
+
+# def get_agent_excutor()

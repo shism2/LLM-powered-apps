@@ -13,12 +13,12 @@ from utils.loggings.agent_scratchpad_logger import ScratchpadLogger, read_logs_f
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
 from utils.agent_components.configurations import Configurations, get_agent_type_enum
-from agent_specific.customagents import Agent
+from agent_specific.customagents import RAGStyleAgentExecutor
 
 
 ## argments
 parser = argparse.ArgumentParser()
-parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='ChatOpenAI')
+parser.add_argument("--provider", choices=['AzureChatOpenAI', 'ChatOpenAI'], default='AzureChatOpenAI')
 parser.add_argument("--agent_type", type=agent_enums.Agentype, choices=list(agent_enums.Agentype), default=agent_enums.Agentype.openai)
 parser.add_argument("--retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
 parser.add_argument("--api_retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
@@ -36,7 +36,7 @@ os.environ['LANGCHAIN_PROJECT'] = args.langsmith_project
 ## Create objects
 config = Configurations(**vars(args))
 llms = [get_base_llm(config)]    
-agents = [Agent(llms[0], config=config)]
+agents = [RAGStyleAgentExecutor(llms[0], config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
 
@@ -75,7 +75,7 @@ def agent_type_change(agent_type, provider):
         config.agent_type = get_agent_type_enum(agent_type)
         
         llms[0] = get_base_llm(config)     
-        agents[0] = Agent(llms[0], config=config)
+        agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Agent type chaged to {agent_type}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -92,7 +92,7 @@ def llm_change(provider, agent_type):
        
         
         llms[0] = get_base_llm(config)     
-        agents[0] = Agent(llms[0], config=config)
+        agents[0] = RAGStyleAgentExecutor(llms[0], config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history

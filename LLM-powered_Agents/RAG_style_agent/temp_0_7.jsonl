@@ -1,0 +1,133 @@
+{"task": "Find out the current temperature in New York City."}
+{"task": "What is the current time in Sydney, Australia?"}
+{"task": "Perform a Google search to find the highest grossing film of all time."}
+{"task": "Execute the Python command 'print(5 + 7)' and provide the output."}
+{"task": "Forecast the weather in London, UK, two days from now."}
+{"task": "What is the current date and time in Tokyo, Japan?"}
+{"task": "Perform a Google search to find the current President of France."}
+{"task": "Execute the Python command 'print([i*2 for i in range(10)])' and provide the output."}
+{"task": "Find out the weather in Berlin, Germany, three days from now."}
+{"task": "What is the current time in Los Angeles, USA?"}
+{"task": "Perform a Google search to find the capital city of Brazil."}
+{"task": "Execute the Python command 'print(sum(range(1, 101)))' and provide the output."}
+{"task": "Forecast the weather in Rome, Italy, five days from now."}
+{"task": "What is the current date and time in Dubai, UAE?"}
+{"task": "Perform a Google search to find the winner of the 2020 US Presidential Election."}
+{"task": "Execute the Python command 'print((lambda x, y: x*y)(3, 7))' and provide the output."}
+{"task": "Find out the weather in Moscow, Russia, one week from now."}
+{"task": "What is the current time in Hawaii, USA?"}
+{"task": "Perform a Google search to find the tallest mountain in the world."}
+{"task": "Execute the Python command 'print([i**2 for i in range(1, 11)])' and provide the output."}
+{"task": "Forecast the weather in Paris, France, four days from now."}
+{"task": "What is the current date and time in Beijing, China?"}
+{"task": "Perform a Google search to find the longest river in the world."}
+{"task": "Execute the Python command 'print(\"Hello, World!\")' and provide the output."}
+{"task": "Find out the weather in Toronto, Canada, six days from now."}
+{"task": "What is the current time in Madrid, Spain?"}
+{"task": "Perform a Google search to find the largest ocean in the world."}
+{"task": "Execute the Python command 'print(sum([i**3 for i in range(1, 11)]))' and provide the output."}
+{"task": "Forecast the weather in Sydney, Australia, three days from now."}
+{"task": "What is the current date and time in Rio de Janeiro, Brazil?"}
+{"task": "Perform a Google search to find the most populous country in the world."}
+{"task": "Execute the Python command 'print([i for i in range(20) if i%2==0])' and provide the output."}
+{"task": "Find out the weather in Seoul, South Korea, seven days from now."}
+{"task": "What is the current time in Cape Town, South Africa?"}
+{"task": "Perform a Google search to find the fastest animal in the world."}
+{"task": "Execute the Python command 'print(sum([i**2 for i in range(1, 21)]))' and provide the output."}
+{"task": "Forecast the weather in Buenos Aires, Argentina, two days from now."}
+{"task": "What is the current date and time in Toronto, Canada?"}
+{"task": "Perform a Google search to find the deepest part of the ocean."}
+{"task": "Execute the Python command 'print(\", \".join([str(i) for i in range(100, 0, -1)]))' and provide the output."}
+{"task": "Find out the weather in New Delhi, India, one week from now."}
+{"task": "What is the current time in Moscow, Russia?"}
+{"task": "Perform a Google search to find the largest desert in the world."}
+{"task": "Execute the Python command 'print(sum([i for i in range(1, 101) if i%2==0]))' and provide the output."}
+{"task": "Forecast the weather in Cairo, Egypt, five days from now."}
+{"task": "What is the current date and time in Mexico City, Mexico?"}
+{"task": "Perform a Google search to find the smallest country in the world by area."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%3==0])' and provide the output."}
+{"task": "Find out the weather in Athens, Greece, six days from now."}
+{"task": "What is the current time in Wellington, New Zealand?"}
+{"task": "Perform a Google search to find the largest island in the world."}
+{"task": "Execute the Python command 'print(\" \".join([\"FizzBuzz\" if i%15==0 else \"Fizz\" if i%3==0 else \"Buzz\" if i%5==0 else str(i) for i in range(1, 101)]))' and provide the output."}
+{"task": "Forecast the weather in Dublin, Ireland, four days from now."}
+{"task": "What is the current date and time in Stockholm, Sweden?"}
+{"task": "Perform a Google search to find the highest waterfall in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%5==0])' and provide the output."}
+{"task": "Find out the weather in Helsinki, Finland, seven days from now."}
+{"task": "What is the current time in Oslo, Norway?"}
+{"task": "Perform a Google search to find the tallest building in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%7==0])' and provide the output."}
+{"task": "Forecast the weather in Vienna, Austria, three days from now."}
+{"task": "What is the current date and time in Copenhagen, Denmark?"}
+{"task": "Perform a Google search to find the longest bridge in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%11==0])' and provide the output."}
+{"task": "Find out the weather in Lisbon, Portugal, two days from now."}
+{"task": "What is the current time in Warsaw, Poland?"}
+{"task": "Perform a Google search to find the most populous city in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%13==0])' and provide the output."}
+{"task": "Forecast the weather in Budapest, Hungary, one week from now."}
+{"task": "What is the current date and time in Prague, Czech Republic?"}
+{"task": "Perform a Google search to find the oldest university in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%17==0])' and provide the output."}
+{"task": "Find out the weather in Brussels, Belgium, five days from now."}
+{"task": "What is the current time in Zurich, Switzerland?"}
+{"task": "Perform a Google search to find the largest lake in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%19==0])' and provide the output."}
+{"task": "Forecast the weather in Amsterdam, Netherlands, four days from now."}
+{"task": "What is the current date and time in Tel Aviv, Israel?"}
+{"task": "Perform a Google search to find the most spoken language in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%23==0])' and provide the output."}
+{"task": "Find out the weather in Riyadh, Saudi Arabia, three days from now."}
+{"task": "What is the current time in Tehran, Iran?"}
+{"task": "Perform a Google search to find the richest person in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%29==0])' and provide the output."}
+{"task": "Forecast the weather in Istanbul, Turkey, two days from now."}
+{"task": "What is the current date and time in Islamabad, Pakistan?"}
+{"task": "Perform a Google search to find the largest forest in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%31==0])' and provide the output."}
+{"task": "Find out the weather in Dhaka, Bangladesh, one week from now."}
+{"task": "What is the current time in New Delhi, India?"}
+{"task": "Perform a Google search to find the largest dinosaur ever discovered."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%37==0])' and provide the output."}
+{"task": "Forecast the weather in Jakarta, Indonesia, six days from now."}
+{"task": "What is the current date and time in Manila, Philippines?"}
+{"task": "Perform a Google search to find the most dangerous animal in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%41==0])' and provide the output."}
+{"task": "Find out the weather in Kuala Lumpur, Malaysia, five days from now."}
+{"task": "What is the current time in Bangkok, Thailand?"}
+{"task": "Perform a Google search to find the most visited city in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%43==0])' and provide the output."}
+{"task": "Forecast the weather in Singapore, Singapore, four days from now."}
+{"task": "What is the current date and time in Hanoi, Vietnam?"}
+{"task": "Perform a Google search to find the most expensive painting ever sold."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%47==0])' and provide the output."}
+{"task": "Find out the weather in Taipei, Taiwan, three days from now."}
+{"task": "What is the current time in Seoul, South Korea?"}
+{"task": "Perform a Google search to find the most popular sport in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%53==0])' and provide the output."}
+{"task": "Forecast the weather in Tokyo, Japan, two days from now."}
+{"task": "What is the current date and time in Beijing, China?"}
+{"task": "Perform a Google search to find the most successful football club in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%59==0])' and provide the output."}
+{"task": "Find out the weather in Hong Kong, China, one week from now."}
+{"task": "What is the current time in Sydney, Australia?"}
+{"task": "Perform a Google search to find the most translated book in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%61==0])' and provide the output."}
+{"task": "Forecast the weather in Melbourne, Australia, seven days from now."}
+{"task": "What is the current date and time in Wellington, New Zealand?"}
+{"task": "Perform a Google search to find the largest volcano in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%67==0])' and provide the output."}
+{"task": "Find out the weather in Auckland, New Zealand, six days from now."}
+{"task": "What is the current time in Fiji, Fiji?"}
+{"task": "Perform a Google search to find the largest animal in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%71==0])' and provide the output."}
+{"task": "Forecast the weather in Samoa, Samoa, five days from now."}
+{"task": "What is the current date and time in Tonga, Tonga?"}
+{"task": "Perform a Google search to find the deepest lake in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%73==0])' and provide the output."}
+{"task": "Find out the weather in Tahiti, French Polynesia, four days from now."}
+{"task": "What is the current time in Honolulu, Hawaii, USA?"}
+{"task": "Perform a Google search to find the oldest living organism in the world."}
+{"task": "Execute the Python command 'print([i for i in range(1, 101) if i%79==0])' and provide the output."}
+{"task": "Forecast the weather in Alaska, USA, three days from now."}

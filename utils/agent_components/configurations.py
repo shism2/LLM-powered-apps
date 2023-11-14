@@ -12,7 +12,7 @@ class Configurations(BaseModel):
     qna_log_folder:str = Field(default='loggers/qna_logs', description="folder qna logs are stored")
     scratchpad_log_folder:str = Field(default='loggers/scratchpad_logs', description="folder agent's intermediate-step logs are stored")
     streaming:Boolean = Field(default=Boolean.true, description="whether to stream the final output or not")
-    provider: Literal['AzureChatOpenAI', 'ChatOpenAI'] = Field(default='ChatOpenAI', description="provider for foundation llm")
+    provider: Literal['AzureChatOpenAI', 'ChatOpenAI'] = Field(default='AzureChatOpenAI', description="provider for foundation llm")
 
     @root_validator
     def folder_existence_check(cls, values):
