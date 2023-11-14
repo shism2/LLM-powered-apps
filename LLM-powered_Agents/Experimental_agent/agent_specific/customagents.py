@@ -2,7 +2,7 @@ import os, sys
 sys.path.extend(['..', '../..'])
 import langchain
 from langchain.agents import initialize_agent, AgentType, Tool
-from typing import List, Any, Literal
+from typing import List, Any, Literal, Optional, Dict, Tuple
 import gradio as gr
 import copy
 from utils.agent_components.get_llm import get_base_llm
@@ -61,7 +61,25 @@ def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> Lis
 
 def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentExecutor :
 
-        memory = ConversationBufferMemory(return_messages=True, memory_key="chat_history")
+        from langchain.memory.utils import get_prompt_input_key
+        class My_ConversationBufferMemory(ConversationBufferMemory):
+                def _get_input_output(
+                        self, inputs: Dict[str, Any], outputs: Dict[str, str]
+                ) -> Tuple[str, str]:
+                        if self.input_key is None:
+                                prompt_input_key = get_prompt_input_key(inputs, self.memory_variables)
+                        else:
+                                prompt_input_key = self.input_key
+                        if self.output_key is None:
+                                # if len(outputs) != 1:
+                                #         raise ValueError(f"One output key expected, got {outputs.keys()}")
+                                output_key = list(outputs.keys())[0]
+                        else:
+                                output_key = self.output_key
+                        return inputs[prompt_input_key], outputs[output_key]
+
+
+        memory = My_ConversationBufferMemory(return_messages=True, memory_key="chat_history")
         tool_result = get_tools(config)
         if isinstance(tool_result, tuple):
                 tools = tool_result[0]
@@ -89,18 +107,37 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
                 agent = get_OpenAI_Functions_agent(llm=llm, tools=tools)
                 system_msg_break_point = None
         
-        agent_executor = AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
+        '''
+        My AgentExecutor
+        '''
+        from langchain.agents.agent import AgentExecutor
+        from langchain.schema.agent import AgentFinish
+        from langchain.callbacks.manager import CallbackManagerForChainRun        
+        class My_AgentExecutor(AgentExecutor):
+                def _return(
+                        self,
+                        output: AgentFinish,
+                        intermediate_steps: list,
+                        run_manager: Optional[CallbackManagerForChainRun] = None,
+                ) -> Dict[str, Any]:
+                        if run_manager:
+                                run_manager.on_agent_finish(output, color="green", verbose=self.verbose)
+                        final_output = output.return_values
+                        final_output["num_iterations"] = len(intermediate_steps)+1
+                        if self.return_intermediate_steps:
+                                final_output["output"] = intermediate_steps
+                        return final_output
+
+        agent_executor = My_AgentExecutor(agent=agent, tools=tools, memory=memory, verbose=True)
         return agent_executor, system_msg_break_point
 
 
 
 class RAGStyleAgent:
         def __init__(self, config:Configurations):
-                # self.llm = llm
                 self.config = config
                 self.llm = get_base_llm(self.config)
                 self.agent_executor, self.system_msg_break_point = get_custom_agent(self.llm, self.config)
-                # self.append_sysem_msg("Your final answer should be the same language as the query (It is ok to use English at intermediate steps).")
                 self.original_system_msg = (self.system_msg+' ')[:-1]
                 self.delete_scratchpad_logs()
 
@@ -111,10 +148,14 @@ class RAGStyleAgent:
                                 return runnable_comp[1][0].messages[0].prompt.template
         
 
-        def __call__(self, query)-> str:
+        def __call__(self, query, return_iter_num = False)-> str:
                 try: agent_type = self.config.agent_type.value
                 except AttributeError: agent_type = self.config.agent_type
-                return (self.agent_executor.invoke({'input':query}, {"metadata": {"agent_type": agent_type}}))['output']
+                response = self.agent_executor.invoke({'input':query}, {"metadata": {"agent_type": agent_type}})
+                if not return_iter_num:
+                        return response['output']
+                else:
+                        return response['output'], response['num_iterations']
                 
 
 

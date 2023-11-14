@@ -80,7 +80,11 @@ class MyRetrievalQA(RetrievalQA):
 def ydc_qa_chain(config)-> RetrievalQA:
     yr = YouRetriever()
     llm = get_base_llm(config)
-    RetrievalQA_chain = MyRetrievalQA.from_chain_type(llm=llm, chain_type=config.api_retrieval_chain_type.value, retriever=yr)
+
+    try: chain_type = config.api_retrieval_chain_type.value
+    except AttributeError: chain_type = config.api_retrieval_chain_type
+        
+    RetrievalQA_chain = MyRetrievalQA.from_chain_type(llm=llm, chain_type=chain_type, retriever=yr)
     return RetrievalQA_chain
 
 class GetFromYDCAPIArgs(BaseModel):

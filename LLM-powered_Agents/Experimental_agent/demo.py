@@ -23,7 +23,7 @@ parser.add_argument("--agent_type", type=agent_enums.Agentype, choices=list(agen
 parser.add_argument("--retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
 parser.add_argument("--api_retrieval_chain_type", type=agent_enums.RetrievalChainType, choices=list(agent_enums.RetrievalChainType), default=agent_enums.RetrievalChainType.stuff)
 parser.add_argument("--verbose", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
-parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent_enums.Search), default=agent_enums.Search.Serp)
+parser.add_argument("--search_tool", type=agent_enums.Search, choices=list(agent_enums.Search), default=agent_enums.Search.YDC)
 parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')
 parser.add_argument("--scratchpad_log_folder", type=str, default='loggers/scratchpad_logs')
 parser.add_argument("--streaming", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
@@ -55,11 +55,11 @@ def qna(human_message, temperature, max_tokens, max_token_none):
         agents[0].set_temperature(temperature)    
         if not max_token_none:    
             agents[0].set_max_tokens(max_tokens)        
-        response = agents[0](human_message)    
+        response, num_iter = agents[0](human_message, True)    
         GUI_CHAT_RECORD(human_message, response)
         logging_qa(qa_logger, human_message, response)
         sys.stdout = original_stdout
-        return GUI_CHAT_RECORD.chat_history, ''
+        return GUI_CHAT_RECORD.chat_history, '', num_iter
     except Exception as e:
         sys.stdout = original_stdout
         agents[0].delete_scratchpad_logs()
@@ -159,7 +159,13 @@ with gr.Blocks(title='Conversational Agent') as demo:
         with gr.Column():
             agent_scratchpad = gr.Textbox(label="Agent scratchpad", lines=20, max_lines=11, show_label=True, show_copy_button=True)
         with gr.Column():
-            question = gr.Textbox(label="Question", show_label=True, show_copy_button=True)
+            with gr.Row():
+                with gr.Column():
+                    num_iterations = gr.Textbox(label="Iterations", show_label=True, info='Number of iterations to get the final answer' )
+                with gr.Column():
+                    dummy = gr.Textbox(label="dummy", show_label=True)
+            with gr.Row():
+                question = gr.Textbox(label="Question", show_label=True, show_copy_button=True)
             
             with gr.Row():
                 run_btn = gr.Button("Run")
@@ -174,7 +180,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
                     label='Example questions'
                 )
 
-    run_btn.click(qna, inputs=[question, temperature, max_tokens, max_token_none], outputs=[chatbot_window, question])
+    run_btn.click(qna, inputs=[question, temperature, max_tokens, max_token_none], outputs=[chatbot_window, question, num_iterations])
     clr_screen.click(GUI_CHAT_RECORD.clear_memory, inputs=[], outputs=[chatbot_window])
     reset_memory.click(clear_memory, inputs=[], outputs=[])
 
