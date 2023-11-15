@@ -13,7 +13,7 @@ from utils.loggings.agent_scratchpad_logger import ScratchpadLogger, read_logs_f
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
 from utils.agent_components.configurations import Configurations, get_agent_type_enum
-from agent_specific.customagents import RAGStyleAgent
+from agent_specific.customagents import ExperimentalAgent
 
 
 ## argments
@@ -35,7 +35,7 @@ os.environ['LANGCHAIN_PROJECT'] = args.langsmith_project
 
 ## Create objects
 config = Configurations(**vars(args))
-agents = [RAGStyleAgent(config=config)]
+agents = [ExperimentalAgent(config=config)]
 qa_logger = get_qa_logger(config.qna_log_folder)
 GUI_CHAT_RECORD = SimpleListChatMemory()
 
@@ -76,7 +76,7 @@ def agent_type_change(agent_type, provider):
         config = Configurations(**vars(args))
         config.provider = provider        
         config.agent_type = get_agent_type_enum(agent_type)        
-        agents[0] = RAGStyleAgent(config=config)
+        agents[0] = ExperimentalAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Agent type chaged to {agent_type}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
@@ -92,7 +92,7 @@ def llm_change(provider, agent_type):
         config.agent_type = get_agent_type_enum(agent_type)
        
         
-        agents[0] = RAGStyleAgent(config=config)
+        agents[0] = ExperimentalAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
         return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
