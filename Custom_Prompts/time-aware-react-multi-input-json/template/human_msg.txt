@@ -1,4 +1,4 @@
 {input}
 
 {agent_scratchpad}
- (reminder to respond in a JSON blob no matter what)
+(reminder to respond in a JSON blob no matter what preceded by a new-line chracter)
