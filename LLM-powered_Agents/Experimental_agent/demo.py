@@ -4,7 +4,7 @@ sys.path.extend(['..', '../..'])
 from dotenv import load_dotenv
 _ = load_dotenv('../../.env')
 
-from utils.load_vars import get_param, overwrite_llm_envs
+from utils.load_vars import overwrite_llm_envs
 import argparse
 from utils.agent_components import agent_enums
 import gradio as gr
@@ -12,7 +12,7 @@ from utils.loggings.qna_logger import get_qa_logger, logging_qa
 from utils.loggings.agent_scratchpad_logger import ScratchpadLogger, read_logs_from_file
 from utils.agent_components.external_memories import SimpleListChatMemory
 from utils.agent_components.get_llm import get_base_llm
-from utils.agent_components.configurations import Configurations, get_agent_type_enum
+from utils.agent_components.configurations import Configurations, get_agent_type_enum, int_or_None
 from agent_specific.customagents import ExperimentalAgent
 
 
@@ -28,7 +28,10 @@ parser.add_argument("--qna_log_folder", type=str, default='loggers/qna_logs')
 parser.add_argument("--scratchpad_log_folder", type=str, default='loggers/scratchpad_logs')
 parser.add_argument("--streaming", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
 parser.add_argument("--langsmith_project", type=str, default='RAG_style_agent_gradio_demo')
+parser.add_argument("--temperature", type=float, default=0.0)
+parser.add_argument("--max_tokens", type=int_or_None, default=None)
 args = parser.parse_args()
+
 
 ## Overwrite LLM params (AzureOpenAI vs. OpenAI)
 overwrite_llm_envs(args.provider)
@@ -154,7 +157,7 @@ with gr.Blocks(title='Conversational Agent') as demo:
                     append_system_message_btn = gr.Button("Append system message")
                     reset_system_message_btn = gr.Button("Reset system message")
                 with gr.Row():
-                    temperature = gr.Slider(label="Temperature", minimum=0.0, maximum=1, value=0.0, step=0.1)
+                    temperature = gr.Slider(label="Temperature", minimum=0.0, maximum=1, value=agents[0].get_ruannble_comp('llm').temperature, step=0.1)
                 with gr.Row():
                     with gr.Column():
                         max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=0, step=1, interactive=False)
