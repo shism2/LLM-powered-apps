@@ -4,7 +4,7 @@ sys.path.extend(['..', '../..'])
 from dotenv import load_dotenv
 _ = load_dotenv('../../.env')
 
-from utils.load_vars import get_param
+from utils.load_vars import get_param, overwrite_llm_envs
 import argparse
 from utils.agent_components import agent_enums
 import gradio as gr
@@ -29,6 +29,10 @@ parser.add_argument("--scratchpad_log_folder", type=str, default='loggers/scratc
 parser.add_argument("--streaming", type=agent_enums.Boolean, choices=list(agent_enums.Boolean), default=agent_enums.Boolean.true)
 parser.add_argument("--langsmith_project", type=str, default='RAG_style_agent_gradio_demo')
 args = parser.parse_args()
+
+## Overwrite LLM params (AzureOpenAI vs. OpenAI)
+overwrite_llm_envs(args.provider)
+
 
 ## LangSmith Project
 os.environ['LANGCHAIN_PROJECT'] = args.langsmith_project
@@ -79,7 +83,7 @@ def agent_type_change(agent_type, provider):
         agents[0] = ExperimentalAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Agent type chaged to {agent_type}. All chat history is deleted. System message is reset.")
-        return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
+        return agents[0].system_msg, GUI_CHAT_RECORD.chat_history, agents[0].get_ruannble_comp('llm').model_name
     except Exception as e:
             raise gr.Error(e)
 
@@ -95,7 +99,7 @@ def llm_change(provider, agent_type):
         agents[0] = ExperimentalAgent(config=config)
         GUI_CHAT_RECORD.clear_memory()
         gr.Info(f"Provider changed to {provider}. All chat history is deleted. System message is reset.")
-        return agents[0].system_msg, GUI_CHAT_RECORD.chat_history
+        return agents[0].system_msg, GUI_CHAT_RECORD.chat_history, agents[0].get_ruannble_comp('llm').model_name
     except Exception as e:
         raise gr.Error(e)
 
@@ -122,10 +126,8 @@ def reset_system_msg_func():
 def activation_max_token(max_token_none):
     if max_token_none:
         return gr.Slider.update(label="Max tokens for completion", minimum=1, maximum=4096, value=0, step=1, interactive=False)
-        return 10
     else:
         return gr.Slider.update(label="Max tokens for completion", minimum=1, maximum=4096, value=2048, step=1, interactive=True)
-        return 100
 
 ## Gradio blcok
 with gr.Blocks(title='Conversational Agent') as demo:  
@@ -133,8 +135,9 @@ with gr.Blocks(title='Conversational Agent') as demo:
     with gr.Row():
         try: agent_type = agents[0].config.agent_type.value
         except AttributeError: agent_type = agents[0].config.agent_type
-        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct", "ReAct_RAG_style"], label="Agent type", value=agent_type, interactive=True)
-        provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="LLM", value=agents[0].config.provider, interactive=True)
+        provider_btn = gr.Radio(["ChatOpenAI", "AzureChatOpenAI"], label="Provider", value=agents[0].config.provider, interactive=True)
+        agent_type_btn = gr.Radio(["OpenAI_Functions", "ReAct", "ReAct_RAG_style"], label="Agent", value=agent_type, interactive=True)
+        llm_model_name = gr.Textbox(label="Brain", value=agents[0].get_ruannble_comp('llm').model_name, interactive=False)
 
     
     chatbot_window = gr.Chatbot(height=450) #chatbot acts as chat history window
@@ -157,8 +160,8 @@ with gr.Blocks(title='Conversational Agent') as demo:
                         max_tokens = gr.Slider(label="Max tokens for completion", minimum=1, maximum=4096, value=0, step=1, interactive=False)
                     with gr.Column():
                         max_token_none = gr.Checkbox(label="Remove the completion token limit", info="Allow as many completion tokens as your Tier allows", value=True, interactive=True)
-    agent_type_btn.change(agent_type_change, [agent_type_btn, provider_btn], [system_msg, chatbot_window])
-    provider_btn.change(llm_change, [provider_btn, agent_type_btn], [system_msg, chatbot_window])
+    agent_type_btn.change(agent_type_change, [agent_type_btn, provider_btn], [system_msg, chatbot_window, llm_model_name])
+    provider_btn.change(llm_change, [provider_btn, agent_type_btn], [system_msg, chatbot_window, llm_model_name])
     append_system_message_btn.click(append_system_message_func, inputs=[append_system_message], outputs=[system_msg, append_system_message])
     reset_system_message_btn.click(reset_system_msg_func, inputs=[], outputs=[system_msg, append_system_message])
     max_token_none.change(fn=activation_max_token, inputs=[max_token_none], outputs=[max_tokens])

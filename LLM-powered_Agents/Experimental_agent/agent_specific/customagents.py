@@ -21,40 +21,14 @@ from utils.agents.get_agents import get_OpenAI_Functions_agent, get_ReAct_agents
 # from langchain.agents.format_scratchpad import format_to_openai_functions
 
 ### Custom tools
-from utils.agent_tools.tools.weather_tools import GetFromOpenWeatherMap
-from utils.agent_tools.tools.web_search_tools import get_web_search_tools
-from utils.agent_tools.tools.math_tools import GetFromWolfram
-from utils.agent_tools.tools.time_tools import GetFromDatetimeModule
-from utils.agent_tools.tools.python_repl_tools import GetLangChainPythonRepl
 from utils.agent_components.configurations import Configurations
-
+from utils.agent_tools.tools.get_tools import get_tool_list
 
 ### For ReAct agent
 from langchain import hub
 from langchain.tools.render import render_text_description_and_args
 from langchain.agents.output_parsers import JSONAgentOutputParser
 from langchain.agents.format_scratchpad import format_log_to_str
-
-
-def get_tools(config:Configurations, return_tool_dictionary: bool = False)-> List[Tool]:
-        search_tool = get_web_search_tools(config)
-        weather_tool = GetFromOpenWeatherMap()
-        math_tool = GetFromWolfram()
-        time_tool = GetFromDatetimeModule()
-        python_repl_tool = GetLangChainPythonRepl()
-
-        # tools = [
-        #         search_tool, weather_tool, math_tool, time_tool, python_repl_tool
-        # ]
-        tools = [
-                search_tool, weather_tool, time_tool, python_repl_tool
-        ]
-
-        if return_tool_dictionary:
-                tool_dictionary  = { tool.name:tool for tool in tools}
-                return (tools, tool_dictionary)
-        else:
-                return tools
 
 
 
@@ -71,8 +45,6 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
                         else:
                                 prompt_input_key = self.input_key
                         if self.output_key is None:
-                                # if len(outputs) != 1:
-                                #         raise ValueError(f"One output key expected, got {outputs.keys()}")
                                 output_key = list(outputs.keys())[0]
                         else:
                                 output_key = self.output_key
@@ -80,7 +52,7 @@ def get_custom_agent(llm, config:Configurations)-> langchain.agents.agent.AgentE
 
 
         memory = My_ConversationBufferMemory(return_messages=True, memory_key="chat_history")
-        tool_result = get_tools(config)
+        tool_result = get_tool_list(config)
         if isinstance(tool_result, tuple):
                 tools = tool_result[0]
                 tool_dictionary = tool_result[1]
