@@ -23,8 +23,7 @@ class ReActAgent(BaseCustomAgent):
         judgement = ''
         self.timestep: int = -1
         self.is_finished: bool = False
-        self.result: Dict = None
-        self.agent_log: List = []
+        self.result: Dict = None        
         self.intermediate_steps: List = []
 
 
@@ -63,7 +62,7 @@ class ReActAgent(BaseCustomAgent):
         if evaluation == 'CORRECT':            
             judgement =  'Jugdement: Your answer is correct.'
         elif evaluation == 'INCORRECT':
-            judgement =  f'Jugdement: Your answer is incorrect. The correct answer is {self.reference}'
+            judgement =  f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"'
         else:
             judgement =  f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.max_trials} steps.'
         return judgement

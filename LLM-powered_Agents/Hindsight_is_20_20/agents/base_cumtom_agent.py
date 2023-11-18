@@ -42,6 +42,7 @@ class BaseCustomAgent:
         self.max_trials = max_trials
         self.print_stdout = print_stdout
         self.stop_words = stop_words
+        self.agent_log: List = ['']
 
         # prompt to brain
         if len(initial_base_prompt)!=2 or not isinstance(initial_base_prompt[0], SystemMessagePromptTemplate) or not isinstance(initial_base_prompt[1], HumanMessagePromptTemplate): 
@@ -67,7 +68,7 @@ class BaseCustomAgent:
     ### generic method ###
     def agent_run(self, query: str, episode: int=1, reference: Optional[str]=None)-> None:    
         self._agent_reset(query=query, reference=reference)
-        self.agent_log.append(query)
+        self.agent_log[-1] += f"Qurey: {query}\n"
 
         if self.print_stdout:
             print(f"-- Episode {episode} started. --")
@@ -75,6 +76,7 @@ class BaseCustomAgent:
         
         while (not self.is_finished) and (not self.is_halted(self.timestep)):
             self.timestep += 1
+            # print(self.timestep, self.is_finished)
 
             intermediate_steps_size, agent_log_size = len(self.intermediate_steps), len(self.agent_log)
             try:
@@ -86,13 +88,11 @@ class BaseCustomAgent:
                     self.agent_log.pop()
                 self.timestep -= 1
         
-        # if self.is_halted(self.timestep):
-        #     self._get_log(intermediate_step='NO_NEED', is_halted=True)
 
         if reference != None:
             self.prediction = self.result.return_values['output'] if isinstance(self.result, AgentFinish) else "HALTED"
             self.judgement = self._evaluation()
-            self._get_log(intermediate_step='NO_NEED', judgement=True, is_halted=self.is_halted(self.timestep))
+            self._collect_log(agent_action='NO_NEED', judgement=True)
 
 
     ### generic method ###
@@ -118,19 +118,14 @@ class BaseCustomAgent:
             'intermediate_steps': self.intermediate_steps,
             'input': query,
         })           
-            
+             
         if isinstance(agent_action, AgentFinish):
-            '''
-            You don't need Observation
-            '''
-            self._get_log(intermediate_step=agent_action, is_halted=False)
+            ## You don't need Observation
+            self._collect_log(agent_action=agent_action)
             return True, agent_action        
         else:    
-            '''
-            You need Observation
-            '''
-            observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
-            self._get_log(intermediate_step=(agent_action, observation), is_halted=False)
+            ## You need Observation
+            observation = self._collect_log(agent_action=agent_action)
             self.intermediate_steps.append((agent_action, observation))
             return False, None
 
@@ -138,29 +133,39 @@ class BaseCustomAgent:
 
 
     ### generic method ###
-    def _get_log(self, intermediate_step: Tuple[AgentAction, str]|AgentFinish|Literal['NO_NEED'], is_halted=False, judgement=False)->None:
+    def _collect_log(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'], judgement=False)->str|None:
         if judgement:
-            self.agent_log.append(self.judgement)
+            self.agent_log[-1] += self.judgement
             if self.print_stdout:
-                print(self.agent_log[-1])
+                print(self.judgement)
             return
         
-        agent_log = intermediate_step[0].log if isinstance(intermediate_step, tuple) else intermediate_step.log
+        action_log = agent_action.log
+        thought, action = re.split(self.action_word, action_log)  
         
-        Observation = (f'Observation {self.timestep+1}: '+intermediate_step[1]).rstrip('\n') if isinstance(intermediate_step, tuple) else (f'Answer: '+intermediate_step.return_values['output']).rstrip('\n') 
-        
-        thought, action = re.split(self.action_word, agent_log)  
+        # Thought
         Thought = thought.strip()
         Thought = f'Thought {self.timestep+1}: '+Thought if len(Thought.split(self.thought_word))==1 else Thought.replace('Thought: ', f'Thought {self.timestep+1}: ')
         if self.print_stdout:
             print(Thought, sep='')
-
+        
+        # Action
         Action = self._get_action_string(action)
         if self.print_stdout:
             print(Action, sep='')
-            print(Observation)
         
-        self.agent_log.append(Thought+'\n'+Action+'\n'+Observation)
+        # Observation
+        if isinstance(agent_action, AgentAction):
+            observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
+            Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
+        else:
+            Observation = (f'Answer: '+agent_action.return_values['output']).rstrip('\n') 
+        if self.print_stdout:
+            print(Observation, sep='')
+
+        self.agent_log[-1] += Thought+'\n'+Action+'\n'+Observation+'\n'
+        if isinstance(agent_action, AgentAction):
+            return observation
 
 
     ### generic method ###
