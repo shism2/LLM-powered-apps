@@ -59,7 +59,6 @@ class ReflexionReActAgent(ReActAgent):
         '''
         Override this method for any child class
         '''
-        
         self._before_agent_step()
         try:
             agent_action = self.brain.invoke({
@@ -68,9 +67,11 @@ class ReflexionReActAgent(ReActAgent):
                 'reflections':self.reflexion, 
             })
             observation, agent_log = self.execution(agent_action=agent_action)
-            if agent_log == 'Exception':
+            if observation == 'Exception':
                 Thought, Action = self._get_Thought_and_Action(agent_action.log, print_on_stdout=False)
-                agent_log = Thought+'\n'+Action+'\n'+ f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.'
+                observation = f'Observation {self.timestep+1}: Unexpected Exception has been raised. Couldn\'t get observation(function output.) The error message is "{agent_log}". I should try again.'
+                self.print_on_stdout(observation)
+                agent_log = Thought+'\n'+Action+'\n'+ observation
             self.agent_log[-1] += agent_log
 
 
@@ -84,16 +85,16 @@ class ReflexionReActAgent(ReActAgent):
 
         except Exception as e:
             agent_action = AgentAction(
-                log='Thought: Unexpected exception has been raised. I should try again.\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+                log='Thought: Unexpected exception has been raised. Couldn\'t get either AgentAction or AgentFinish.\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
                 tool='',
                 tool_input='',
                 type = 'AgentAction')
                 
             Thought, _ = self._get_Thought_and_Action(agent_action.log, print_on_stdout=True)
             Action = f'Action {self.timestep+1}: ""'
-            observation = f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.+\n'
+            observation = f'Observation {self.timestep+1}: Unexpected Exception has been raised. Couldn\'t get either AgentAction or AgentFinish. The error message is "{e}". I should try again.+\n'
+            self.print_on_stdout(observation)
             agent_log = Thought+'\n'+Action+'\n'+ observation
             self.agent_log[-1] += agent_log
             self.intermediate_steps.append((agent_action, observation))
             return False, None  
-

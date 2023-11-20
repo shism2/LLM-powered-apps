@@ -142,7 +142,7 @@ class BaseCustomAgent:
                 self.print_on_stdout(Observation, sep='')
                 return None, Thought+'\n'+Action+'\n'+Observation+'\n'
         except Exception as e:
-            return None, 'Exception'
+            return 'Exception', e
 
 
 

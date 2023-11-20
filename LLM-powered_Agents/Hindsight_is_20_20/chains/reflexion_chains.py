@@ -49,7 +49,12 @@ class BaseReflexionChain:
 
 
     def __call__(self, previous_trial: str)-> str:
-        return '- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
+        try:
+            reflexion = '- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
+        except Exception as e:
+            reflexion = f'- I couldn\'t produce a reflection for this trial because of an unexpected error. The error message if {e}'
+        return reflexion
+
 
 
 if __name__ == '__main__':
