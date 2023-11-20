@@ -16,7 +16,7 @@ def get_base_llm(config: Optional[Configurations]=None):
         llm = AzureChatOpenAI(deployment_name=get_param('azure_deployment_name'), model_name=get_param('azure_model_name'),
                                         temperature=config_dict['temperature'], max_tokens=config_dict['max_tokens'], streaming=config_dict['streaming'])
     elif config.provider == 'ChatOpenAI':
-        llm = ChatOpenAI(model_name=get_param('model_name'), model_kwargs={'engine':get_param('model_name')},
+        llm = ChatOpenAI(model_name=get_param('model_name'), 
                                         temperature=0.0, streaming=config_dict['streaming'])
     return llm
 

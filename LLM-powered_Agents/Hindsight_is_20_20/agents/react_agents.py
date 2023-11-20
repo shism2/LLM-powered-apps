@@ -5,6 +5,9 @@ import json
 from langchain.schema.agent import AgentAction, AgentFinish
 from langchain.agents.format_scratchpad.log import format_log_to_str
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
+from langchain.agents.output_parsers import JSONAgentOutputParser
+import re
 
 class ReActAgent(BaseCustomAgent):
     def __init__(self, **kwargs):
@@ -25,6 +28,95 @@ class ReActAgent(BaseCustomAgent):
         self.is_finished: bool = False
         self.result: Dict = None        
         self.intermediate_steps: List = []
+        self.judgement = ['', 0]
+
+
+
+    def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
+        '''
+        Override this method for any child class
+        '''
+        
+        # self._before_agent_step()
+        # try:
+        #     agent_action = self.brain.invoke({
+        #         'intermediate_steps': self.intermediate_steps,
+        #         'input': query,
+        #     })
+        # except Exception as e:
+        #     agent_action = AgentAction(
+        #         log='Thought: Unexpected exception has been raised. I should try again.\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+        #         tool='',
+        #         tool_input='',
+        #         type = 'AgentAction')
+
+        # Thought, Action = self._get_Thought_and_Action(agent_action.log, print_on_stdout=False)
+        # try:
+        #     observation, agent_log = self.execution(agent_action=agent_action)
+        # except Exception as e:
+        #     agent_log = Thought+'\n'+Action+'\n'+ f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.'
+        # self.agent_log[-1] += agent_log
+        # if isinstance(agent_action, AgentFinish):            
+        #     ## You don't need Observation
+        #     return True, agent_action        
+        # else:    
+        #     ## You need Observation
+        #     self.intermediate_steps.append((agent_action, observation))
+        #     return False, None
+
+
+        self._before_agent_step()
+        try:
+            agent_action = self.brain.invoke({
+                'intermediate_steps': self.intermediate_steps,
+                'input': query,
+            })
+            observation, agent_log = self.execution(agent_action=agent_action)
+            if agent_log == 'Exception':
+                Thought, Action = self._get_Thought_and_Action(agent_action.log, print_on_stdout=False)
+                agent_log = Thought+'\n'+Action+'\n'+ f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.'
+            self.agent_log[-1] += agent_log
+
+
+            if isinstance(agent_action, AgentFinish):            
+                # Got to the terminal state
+                return True, agent_action        
+            else:    
+                ## Non-terminal state
+                self.intermediate_steps.append((agent_action, observation))
+                return False, None            
+
+        except Exception as e:
+            agent_action = AgentAction(
+                log='Thought: Unexpected exception has been raised. I should try again.\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+                tool='',
+                tool_input='',
+                type = 'AgentAction')
+                
+            Thought, _ = self._get_Thought_and_Action(agent_action.log, print_on_stdout=True)
+            Action = f'Action {self.timestep+1}: ""'
+            observation = f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.+\n'
+            agent_log = Thought+'\n'+Action+'\n'+ observation
+            self.agent_log[-1] += agent_log
+            self.intermediate_steps.append((agent_action, observation))
+            return False, None  
+
+
+
+    def agent_run_miltiple_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
+        '''
+        Override this method for any child class
+        '''
+        self.print_on_stdout(f"Query: {query}")
+
+        if agent_log_reset:
+            self.agent_log_reset()
+        
+        trial=0
+        while self.judgement[1]!=1 and trial<num_trials:
+            self.print_on_stdout(f"---- Trial {trial+1} ----")
+            self.agent_run(query=query, reference=reference, multiple_trials=True)  
+            trial += 1
 
 
     def _get_action_string(self, raw_action_string:str)-> str:
@@ -35,7 +127,7 @@ class ReActAgent(BaseCustomAgent):
         except AttributeError:
             action_input = data.get('action_input')
         Action = f'Action: {action}({action_input})'
-        Action = Action.replace('Action: ', f'Action: {self.timestep+1}: ')
+        Action = Action.replace('Action: ', f'Action {self.timestep+1}: ')
         return Action
 
 
@@ -43,12 +135,27 @@ class ReActAgent(BaseCustomAgent):
         return format_log_to_str(intermediate_steps)
 
 
-    def _base_prompt_postprocessing(self)-> ChatPromptTemplate:
-        return self.base_prompt.partial(
+
+    @property
+    def base_prompt(self)-> ChatPromptTemplate:
+        prompt = ChatPromptTemplate.from_messages([self.base_system_prompt, self.base_human_prompt])
+        prompt = prompt.partial(
             tools=render_text_description_and_args(self.tools),
             tool_names=", ".join([t.name for t in self.tools]),
             )
-    
+        return prompt
+
+    @property
+    def brain(self)-> Any:
+        brain = (
+            RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._format_scratchpad(x["intermediate_steps"]),) 
+            | self.base_prompt
+            | self.base_llm.bind(stop=self.stop_words)
+            | JSONAgentOutputParser()
+        )  
+        return brain      
+
+
     def _evaluation(self)-> str:
         if self.prediction != 'HALTED':
             evaluation = self.evaluator(
@@ -60,9 +167,9 @@ class ReActAgent(BaseCustomAgent):
             evaluation = 'HALTED'
 
         if evaluation == 'CORRECT':            
-            judgement =  'Jugdement: Your answer is correct.'
+            judgement =  ['Jugdement: Your answer is correct.', 1]
         elif evaluation == 'INCORRECT':
-            judgement =  f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"'
+            judgement =  [f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"', 0]
         else:
-            judgement =  f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.max_trials} steps.'
+            judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', -1]
         return judgement

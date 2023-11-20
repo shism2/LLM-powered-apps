@@ -7,10 +7,11 @@ from typing import List, Literal, Optional, List
 
 
 class ChatOpenAI_vars(BaseModel):
+    Env_OPENAI_API_TYPE: str = Field(default='OPENAI_API_TYPE') 
     Env_OPENAI_API_KEY: str = Field(default='OPENAI_API_KEY') 
     Param_model_name: str = Field(default='model_name')
 class AzureChatOpenAI_vars(BaseModel):
-    Env_OPENAI_API_TYPE: str =  Field(default='OPENAI_API_TYPE')
+    Env_OPENAI_API_TYPE: str =  Field(default='AZURE_OPENAI_API_TYPE')
     Env_OPENAI_API_VERSION: str =  Field(default='AZURE_OPENAI_API_VERSION')
     Env_OPENAI_API_BASE: str =  Field(default='AZURE_OPENAI_API_BASE')
     Env_OPENAI_API_KEY: str =  Field(default='AZURE_OPENAI_API_KEY')
