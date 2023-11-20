@@ -97,16 +97,6 @@ class BaseCustomAgent:
             self.timestep += 1
 
             self.is_finished, self.result = self.agent_step(query)
-            # intermediate_steps_size, agent_log_size = len(self.intermediate_steps), len(self.agent_log)
-            # try:
-            #     self.is_finished, self.result = self.agent_step(query)
-            # except Exception as e:
-            #     print(f"ERROR------> {e}")
-            #     if len(self.intermediate_steps)>intermediate_steps_size:
-            #         self.intermediate_steps.pop()
-            #     if len(self.agent_log)>agent_log_size:
-            #         self.agent_log.pop()
-            #     self.timestep -= 1
 
         if reference != None:
             self.prediction = self.result.return_values['output'] if isinstance(self.result, AgentFinish) else "HALTED"

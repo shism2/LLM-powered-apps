@@ -32,8 +32,9 @@ class ReflexionReActAgent(ReActAgent):
         '''
         Override this method for any child class
         '''
-        if self.print_stdout:
-            print(f"Query: {query}")
+        if reference==None:
+            raise ValueError("For Reflexion agent, reference should be provided for 'agent_run_miltiple_trials' method.")
+        self.print_on_stdout(f"Query: {query}")
 
         if agent_log_reset:
             self.agent_log_reset()

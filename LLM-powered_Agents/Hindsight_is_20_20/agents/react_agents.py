@@ -8,6 +8,7 @@ from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, H
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.output_parsers import JSONAgentOutputParser
 import re
+from langchain.schema.runnable import RunnableLambda
 
 class ReActAgent(BaseCustomAgent):
     def __init__(self, **kwargs):
@@ -36,35 +37,6 @@ class ReActAgent(BaseCustomAgent):
         '''
         Override this method for any child class
         '''
-        
-        # self._before_agent_step()
-        # try:
-        #     agent_action = self.brain.invoke({
-        #         'intermediate_steps': self.intermediate_steps,
-        #         'input': query,
-        #     })
-        # except Exception as e:
-        #     agent_action = AgentAction(
-        #         log='Thought: Unexpected exception has been raised. I should try again.\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
-        #         tool='',
-        #         tool_input='',
-        #         type = 'AgentAction')
-
-        # Thought, Action = self._get_Thought_and_Action(agent_action.log, print_on_stdout=False)
-        # try:
-        #     observation, agent_log = self.execution(agent_action=agent_action)
-        # except Exception as e:
-        #     agent_log = Thought+'\n'+Action+'\n'+ f'Observation {self.timestep+1}: Unexpected Exception has been raised. The error message is "{e}". I should try again.'
-        # self.agent_log[-1] += agent_log
-        # if isinstance(agent_action, AgentFinish):            
-        #     ## You don't need Observation
-        #     return True, agent_action        
-        # else:    
-        #     ## You need Observation
-        #     self.intermediate_steps.append((agent_action, observation))
-        #     return False, None
-
-
         self._before_agent_step()
         try:
             agent_action = self.brain.invoke({
@@ -147,10 +119,52 @@ class ReActAgent(BaseCustomAgent):
 
     @property
     def brain(self)-> Any:
+
+        def fix_json(ai_message_chunk):  
+            '''
+            This function is need for gpt-4-turbo for avoding error when invoking 'parse_json_markdown()'
+            '''
+            input_str = ai_message_chunk.content 
+            start = input_str.find('"action": ') + len('"action": ')  
+            end = input_str.find(',', start)  
+            
+            action_value = input_str[start:end].strip()  
+            
+            # Check if action_value is already enclosed in double quotes  
+            if not (action_value.startswith('"') and action_value.endswith('"')):  
+                fixed_str = input_str[:start] + '"' + action_value + '"' + input_str[end:]  
+            else:  
+                fixed_str = input_str    
+
+            ai_message_chunk.content = fixed_str        
+            return ai_message_chunk 
+
+
+        async def fix_json_async(ai_message_chunk):  
+            '''
+            This function is need for gpt-4-turbo for avoding error when invoking 'parse_json_markdown()'
+            '''
+            input_str = ai_message_chunk.content 
+            start = input_str.find('"action": ') + len('"action": ')  
+            end = input_str.find(',', start)  
+            
+            action_value = input_str[start:end].strip()  
+            
+            # Check if action_value is already enclosed in double quotes  
+            if not (action_value.startswith('"') and action_value.endswith('"')):  
+                fixed_str = input_str[:start] + '"' + action_value + '"' + input_str[end:]  
+            else:  
+                fixed_str = input_str    
+
+            ai_message_chunk.content = fixed_str        
+            return ai_message_chunk 
+
+
         brain = (
             RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._format_scratchpad(x["intermediate_steps"]),) 
             | self.base_prompt
             | self.base_llm.bind(stop=self.stop_words)
+            | RunnableLambda(fix_json, afunc=fix_json_async)
             | JSONAgentOutputParser()
         )  
         return brain      
