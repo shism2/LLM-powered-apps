@@ -5,6 +5,7 @@ from langchain.agents import Tool
 from langchain.tools.render import render_text_description_and_args
 from utils.agent_components.get_llm import LangChainLLMWrapper
 
+
 class BaseReflexionChain:
     def __init__(self, 
                 llm: Any,
@@ -42,11 +43,9 @@ class BaseReflexionChain:
     def tool_description(self)-> str:
         return render_text_description_and_args(self.tools)
 
-
     @property
     def reflexion_chain(self)-> Any:
         return self.prompt | self.llm    
-
 
     def __call__(self, previous_trial: str)-> str:
         try:
@@ -54,7 +53,6 @@ class BaseReflexionChain:
         except Exception as e:
             reflexion = f'- I couldn\'t produce a reflection for this trial because of an unexpected error. The error message if {e}'
         return reflexion
-
 
 
 if __name__ == '__main__':

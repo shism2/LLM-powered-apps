@@ -10,6 +10,7 @@ from langchain.tools.render import render_text_description_and_args
 import copy
 import json  
 import re  
+from typing import Optional
 
 class BaseCustomAgent:
     def __init__(self,
@@ -17,8 +18,8 @@ class BaseCustomAgent:
                 base_prompt: ChatPromptTemplate|str,
                 tools: List[Tool],
                 evaluator: Any,
-                thought_word: str, 
-                action_word: str,
+                thought_word: Optional[str]=None, 
+                action_word: Optional[str]=None,
                 stop_words: List[str]|None=None,
                 horizon: int=6,
                 print_stdout: bool=True):
@@ -55,7 +56,7 @@ class BaseCustomAgent:
 
 
         # agent_reset
-        self._agent_reset()
+        self.agent_reset()
 
 
     @property
@@ -72,6 +73,9 @@ class BaseCustomAgent:
         '''
         raise NotImplementedError
 
+    def agent_reset(self):
+        self._before_agent_episode()
+
 
     def print_on_stdout(self, string: str, sep='\n')->None:
         if self.print_stdout:
@@ -82,9 +86,9 @@ class BaseCustomAgent:
         self.agent_log = ['']
 
 
-    def agent_run(self, query: str, reference: Optional[str]=None, multiple_trials: bool=False, agent_log_reset: bool=False)-> None:    
+    def run_agent_episode(self, query: str, reference: Optional[str]=None, multiple_trials: bool=False, agent_log_reset: bool=False)-> None:    
 
-        self._agent_reset(query=query, reference=reference)
+        self._before_agent_episode(query=query, reference=reference)
         if agent_log_reset:
             self.agent_log_reset()
         if self.agent_log[-1] != '':
@@ -104,7 +108,7 @@ class BaseCustomAgent:
             self.execution(agent_action='NO_NEED', judgement=True)
 
 
-    def agent_run_miltiple_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
+    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
         '''
         Override this method for any child class
         '''
@@ -129,39 +133,48 @@ class BaseCustomAgent:
 
         Thought, Action = self._get_Thought_and_Action(agent_action.log)
         
-        # Observation
-
-        try:
-            if isinstance(agent_action, AgentAction):
+        # Observation or Answer
+        if isinstance(agent_action, AgentAction):
+            try:
                 observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
                 Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
+            except Exception as e:
+                Observation = f'Observation {self.timestep+1}: Filed to get Observation (function output). The tool is {agent_action.tool} and tool input is {agent_action.tool_input}. The error message is "{e}"'
+            finally:     
                 self.print_on_stdout(Observation, sep='')
-                return observation, Thought+'\n'+Action+'\n'+Observation+'\n'
-            else:
+                return Observation, Thought+'\n'+Action+'\n'+Observation+'\n'
+        else:
+            try:
                 Observation = (f'Answer: '+agent_action.return_values['output']).rstrip('\n') 
+            except Exception as e:
+                Observation = f'Answer: Failed to get the final answer. The error message is "{e}"'
+            finally:
                 self.print_on_stdout(Observation, sep='')
                 return None, Thought+'\n'+Action+'\n'+Observation+'\n'
-        except Exception as e:
-            return 'Exception', e
-
 
 
 
     def _get_Thought_and_Action(self, agent_action_log:str, print_on_stdout=True)-> Tuple[str, str]:
-        thought, action = re.split(self.action_word, agent_action_log)  
-        
-        # Thought
-        Thought = thought.strip()
-        Thought = f'Thought {self.timestep+1}: '+Thought if len(Thought.split(self.thought_word))==1 else Thought.replace('Thought: ', f'Thought {self.timestep+1}: ')
-        if print_on_stdout:
-            self.print_on_stdout(Thought, sep='')
-        
-        # Action
-        Action = self._get_action_string(action)
-        if print_on_stdout:
-            self.print_on_stdout(Action, sep='')
-        return Thought, Action
-
+        try:
+            thought, action = re.split(self.action_word, agent_action_log)  
+            try:    
+                Thought = thought.strip()
+                Thought = f'Thought {self.timestep+1}: '+Thought if len(Thought.split(self.thought_word))==1 else Thought.replace('Thought: ', f'Thought {self.timestep+1}: ')
+            except Exception as e:
+                Thought = f'Thought {self.timestep+1}: Filed to parse Thought in str. The error message is "{e}"'
+    
+            try:    
+                Action = self._get_action_string(action)
+            except Exception as e:
+                Action = f'Action {self.timestep+1}: Filed to parse Action in str. The error message is "{e}"'
+        except Exception as e:
+            Thought = f'Thought {self.timestep+1}: Filed to parse Thought in str. The error message is "{e}"'
+            Action = f'Action {self.timestep+1}: Filed to parse Action in str. The error message is "{e}"'
+        finally:
+            if print_on_stdout:
+                self.print_on_stdout(Thought, sep='')
+                self.print_on_stdout(Action, sep='')
+            return Thought, Action
 
 
     def is_halted(self, timestep:int)-> bool:
@@ -179,7 +192,7 @@ class BaseCustomAgent:
         raise NotImplementedError
 
 
-    def _agent_reset(self, query: Optional[str]=None, reference: Optional[str]=None):
+    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
         '''
         Override this method for any child class
         '''
