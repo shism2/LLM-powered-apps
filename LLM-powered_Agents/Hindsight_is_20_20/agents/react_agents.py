@@ -13,91 +13,10 @@ from langchain.schema.runnable import RunnableLambda
 class ReActAgent(BaseCustomAgent):
     def __init__(self, **kwargs):
             super().__init__(**kwargs)
-
-    def _before_agent_step(self):
-        pass
-
-
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
-        """Before staring a new episode"""
-        if query != None:
-            self.query = query
-        if reference != None:
-            self.reference = reference
-        self.prediction = ''
-        self.timestep: int = -1
-        self.is_finished: bool = False
-        self.result: Dict = None        
-        self.intermediate_steps: List = []
-        self.judgement = ['', 0]
-
-
-
-    def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
-        '''
-        Override this method for any child class
-        '''
-        self._before_agent_step()
-        try:
-            agent_action = self.brain.invoke({
-                'intermediate_steps': self.intermediate_steps,
-                'input': query,
-            })
-        except Exception as e:
-            """ This catches the exception where the brain fails to produce AgentAction or AgentFinish.  """
-            agent_action = AgentAction(
-                log='Thought: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
-                tool='',
-                tool_input='',
-                type = 'AgentAction')
-        finally:
-            observation, agent_log = self.execution(agent_action=agent_action)
-            self.agent_log[-1] += agent_log
-
-            if isinstance(agent_action, AgentFinish):            
-                return True, agent_action        
-            else:    
-                self.intermediate_steps.append((agent_action, observation))
-                return False, None            
-
-
-    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
-        '''
-        Override this method for any child class
-        '''
-        self.print_on_stdout(f"Query: {query}")
-
-        if agent_log_reset:
-            self.agent_log_reset()
-        
-        trial=0
-        while self.judgement[1]!=1 and trial<num_trials:
-            self.print_on_stdout(f"---- Trial {trial+1} ----")
-            self.run_agent_episode(query=query, reference=reference, multiple_trials=True)  
-            trial += 1
-
-
-    def _get_action_string(self, raw_action_string:str)-> str:
-        try:
-            data = json.loads(raw_action_string.strip().strip(' `\n'))  
-            action = data.get('action', '')  
-            try:
-                action_input = ', '.join(f'{k}={v}' for k, v in data.get('action_input', {}).items())  
-            except AttributeError:
-                action_input = data.get('action_input')
-            Action = f'Action: {action}({action_input})'
-            Action = Action.replace('Action: ', f'Action {self.timestep+1}: ')
-        except Exception as e:
-            Action = f'Action {self.timestep+1}: Filed to parse Action. The error message is "{e}"'
-        finally:
-            return Action
-
-
-    def _format_scratchpad(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
-        return format_log_to_str(intermediate_steps)
-
-
-
+            
+    #############################
+    #### Fundamental methods ####
+    #############################
     @property
     def base_prompt(self)-> ChatPromptTemplate:
         prompt = ChatPromptTemplate.from_messages([self.base_system_prompt, self.base_human_prompt])
@@ -153,11 +72,122 @@ class ReActAgent(BaseCustomAgent):
         brain = (
             RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._format_scratchpad(x["intermediate_steps"]),) 
             | self.base_prompt
-            | self.base_llm.bind(stop=self.stop_words)
+            | self.reasoninig_engine.bind(stop=self.stop_words)
             | RunnableLambda(fix_json, afunc=fix_json_async)
             | JSONAgentOutputParser()
         )  
         return brain      
+
+    ####################################
+    #### Agentic simulation methods ####
+    ####################################
+    def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
+        self._before_agent_step()
+        try:
+            agent_action = self.brain.invoke({
+                'intermediate_steps': self.intermediate_steps,
+                'input': query,
+            })
+        except Exception as e:
+            """ This catches the exception where the brain fails to produce AgentAction or AgentFinish.  """
+            agent_action = AgentAction(
+                log='Thought: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+                tool='',
+                tool_input='',
+                type = 'AgentAction')
+        finally:
+            observation, agent_log = self.execution(agent_action=agent_action)
+            self.agent_log[-1] += agent_log
+
+            if isinstance(agent_action, AgentFinish):            
+                return True, agent_action        
+            else:    
+                self.intermediate_steps.append((agent_action, observation))
+                return False, None            
+
+
+    def execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'], judgement=False)-> str|None:
+        if judgement:
+            self.agent_log[-1] += self.judgement[0]
+            self.print_on_stdout(self.judgement[0])
+            return
+
+        Thought, Action = self._get_Thought_and_Action(agent_action.log)
+       
+        # Observation or Answer
+        if isinstance(agent_action, AgentAction):
+            try:
+                observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
+                Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
+            except Exception as e:
+                Observation = f'Observation {self.timestep+1}: Filed to get Observation (function output). The tool is {agent_action.tool} and tool input is {agent_action.tool_input}. The error message is "{e}"'
+            finally:     
+                self.print_on_stdout(Observation, sep='')
+                return Observation, Thought+'\n'+Action+'\n'+Observation+'\n'
+        else:
+            try:
+                Observation = (f'Answer: '+agent_action.return_values['output']).rstrip('\n') 
+            except Exception as e:
+                Observation = f'Answer: Failed to get the final answer. The error message is "{e}"'
+            finally:
+                self.print_on_stdout(Observation, sep='')
+                return None, Thought+'\n'+Action+'\n'+Observation+'\n'
+
+
+    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
+        '''
+        Override this method for any child class
+        '''
+        self.print_on_stdout(f"Query: {query}")
+
+        if agent_log_reset:
+            self.agent_log_reset()
+        
+        trial=0
+        while self.judgement[1]!=1 and trial<num_trials:
+            self.print_on_stdout(f"---- Trial {trial+1} ----")
+            self.run_agent_episode(query=query, reference=reference, multiple_trials=True)  
+            trial += 1
+
+    ###########################################
+    #### Agentic-simulation helper methods ####
+    ###########################################
+    def _get_action_string(self, raw_action_string:str)-> str:
+        try:
+            data = json.loads(raw_action_string.strip().strip(' `\n'))  
+            action = data.get('action', '')  
+            try:
+                action_input = ', '.join(f'{k}={v}' for k, v in data.get('action_input', {}).items())  
+            except AttributeError:
+                action_input = data.get('action_input')
+            Action = f'Action: {action}({action_input})'
+            Action = Action.replace('Action: ', f'Action {self.timestep+1}: ')
+        except Exception as e:
+            Action = f'Action {self.timestep+1}: Filed to parse Action. The error message is "{e}"'
+        finally:
+            return Action
+
+
+    def _format_scratchpad(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+        return format_log_to_str(intermediate_steps)
+
+
+
+    def _before_agent_step(self):
+        pass
+
+    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+        """Before staring a new episode"""
+        if query != None:
+            self.query = query
+        if reference != None:
+            self.reference = reference
+        self.prediction = ''
+        self.timestep: int = -1
+        self.is_finished: bool = False
+        self.agent_observation: Dict = None        
+        self.intermediate_steps: List = []
+        self.judgement = ['', 0]
 
 
     def _evaluation(self)-> str:

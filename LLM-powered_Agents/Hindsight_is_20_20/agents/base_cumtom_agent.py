@@ -14,7 +14,7 @@ from typing import Optional
 
 class BaseCustomAgent:
     def __init__(self,
-                base_llm: Any,
+                reasoninig_engine: Any,
                 base_prompt: ChatPromptTemplate|str,
                 tools: List[Tool],
                 evaluator: Any,
@@ -25,7 +25,7 @@ class BaseCustomAgent:
                 print_stdout: bool=True):
         
         # reasoning engine
-        self.base_llm: Any = base_llm
+        self.reasoninig_engine: Any = reasoninig_engine
         
         # tools
         self.tools = tools
@@ -35,6 +35,7 @@ class BaseCustomAgent:
         self.evaluator = evaluator
 
         # agent attributes
+        self.agent_observation: Dict = None
         self.query = ''
         self.reference = ''
         self.prediction = ''
@@ -58,13 +59,22 @@ class BaseCustomAgent:
         # agent_reset
         self.agent_reset()
 
-
+    #############################
+    #### Fundamental methods ####
+    #############################
     @property
     def base_prompt(self)-> ChatPromptTemplate:
         '''
         Override this property for any child class
         '''
         raise NotImplementedError
+
+    @base_prompt.setter
+    def base_prompt(self, new_prompt: ChatPromptTemplate)-> None:
+        '''
+        Override this property setter for any child class
+        '''
+        raise NotImplementedError    
 
     @property
     def brain(self)-> Any:
@@ -81,9 +91,27 @@ class BaseCustomAgent:
         if self.print_stdout:
             print(string, sep=sep)
 
-
     def agent_log_reset(self)-> None:
         self.agent_log = ['']
+
+
+    def is_halted(self, timestep:int)-> bool:
+        return self.timestep>self.horizon-2 and self.agent_observation==None
+
+    ####################################
+    #### Agentic simulation methods ####
+    ####################################
+    def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
+        '''
+        Override this method for any child class
+        '''
+        raise NotImplementedError
+
+    def execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'], judgement=False)-> str|None:
+        '''
+        Override this method for any child class
+        '''
+        raise NotImplementedError
 
 
     def run_agent_episode(self, query: str, reference: Optional[str]=None, multiple_trials: bool=False, agent_log_reset: bool=False)-> None:    
@@ -100,10 +128,10 @@ class BaseCustomAgent:
         while (not self.is_finished) and (not self.is_halted(self.timestep)):
             self.timestep += 1
 
-            self.is_finished, self.result = self.agent_step(query)
+            self.is_finished, self.agent_observation = self.agent_step(query)
 
         if reference != None:
-            self.prediction = self.result.return_values['output'] if isinstance(self.result, AgentFinish) else "HALTED"
+            self.prediction = self.agent_observation.return_values['output'] if isinstance(self.agent_observation, AgentFinish) else "HALTED"
             self.judgement = self._evaluation()
             self.execution(agent_action='NO_NEED', judgement=True)
 
@@ -116,44 +144,9 @@ class BaseCustomAgent:
 
 
 
-    def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
-           
-
-
-    def execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'], judgement=False)-> str|None:
-        if judgement:
-            self.agent_log[-1] += self.judgement[0]
-            self.print_on_stdout(self.judgement[0])
-            return
-
-
-        Thought, Action = self._get_Thought_and_Action(agent_action.log)
-        
-        # Observation or Answer
-        if isinstance(agent_action, AgentAction):
-            try:
-                observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
-                Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
-            except Exception as e:
-                Observation = f'Observation {self.timestep+1}: Filed to get Observation (function output). The tool is {agent_action.tool} and tool input is {agent_action.tool_input}. The error message is "{e}"'
-            finally:     
-                self.print_on_stdout(Observation, sep='')
-                return Observation, Thought+'\n'+Action+'\n'+Observation+'\n'
-        else:
-            try:
-                Observation = (f'Answer: '+agent_action.return_values['output']).rstrip('\n') 
-            except Exception as e:
-                Observation = f'Answer: Failed to get the final answer. The error message is "{e}"'
-            finally:
-                self.print_on_stdout(Observation, sep='')
-                return None, Thought+'\n'+Action+'\n'+Observation+'\n'
-
-
-
+    ###########################################
+    #### Agentic-simulation helper methods ####
+    ###########################################
     def _get_Thought_and_Action(self, agent_action_log:str, print_on_stdout=True)-> Tuple[str, str]:
         try:
             thought, action = re.split(self.action_word, agent_action_log)  
@@ -175,14 +168,6 @@ class BaseCustomAgent:
                 self.print_on_stdout(Thought, sep='')
                 self.print_on_stdout(Action, sep='')
             return Thought, Action
-
-
-    def is_halted(self, timestep:int)-> bool:
-        return self.timestep>self.horizon-2 and self.result==None
-
-
-    def change_prompt(self, new_prompt: ChatPromptTemplate)-> None:
-        self.base_prompt = new_prompt
 
 
     def _before_agent_step(self):

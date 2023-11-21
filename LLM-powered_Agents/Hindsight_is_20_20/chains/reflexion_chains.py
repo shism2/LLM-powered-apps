@@ -4,17 +4,17 @@ from typing import List, Tuple, Any, Dict, Optional, Literal
 from langchain.agents import Tool
 from langchain.tools.render import render_text_description_and_args
 from utils.agent_components.get_llm import LangChainLLMWrapper
-
+from langchain.schema.runnable import RunnableSequence
 
 class BaseReflexionChain:
     def __init__(self, 
-                llm: Any,
+                reasoninig_engine: Any,
                 prompt: ChatPromptTemplate|str,
                 tools: List[Tool],
                 reflexion_examples: str):
        
         # reasoning engine
-        self.llm = llm
+        self.reasoninig_engine = reasoninig_engine
 
         # prompt for brain
         if isinstance(prompt, str):
@@ -44,8 +44,9 @@ class BaseReflexionChain:
         return render_text_description_and_args(self.tools)
 
     @property
-    def reflexion_chain(self)-> Any:
-        return self.prompt | self.llm    
+    def reflexion_chain(self)-> RunnableSequence:
+        return self.prompt | self.reasoninig_engine    
+
 
     def __call__(self, previous_trial: str)-> str:
         try:
@@ -60,10 +61,10 @@ if __name__ == '__main__':
     from fewshot_examples.reflections import REFLECTIONS
     from utils.agent_components.get_llm import LangChainLLMWrapper
 
-    llm = LangChainLLMWrapper().llm
+    reasoninig_engine = LangChainLLMWrapper().llm
     prompt = "jet-taekyo-lee/experimental-reflextion"
     tools = get_tool_list()
     reflexion_examples = REFLECTIONS
 
-    reflexion_chain = BaseReflexionChain(llm=llm, prompt=prompt, tools=tools, reflexion_examples=reflexion_examples)
+    reflexion_chain = BaseReflexionChain(reasoninig_engine=reasoninig_engine, prompt=prompt, tools=tools, reflexion_examples=reflexion_examples)
 
