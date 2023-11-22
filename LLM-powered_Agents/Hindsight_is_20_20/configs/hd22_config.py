@@ -13,7 +13,7 @@ class HD22Configuration(BaseModel):
     max_tokens: int|None = Field(default=None, description="maximum completion token for llm")    
     streaming: Boolean = Field(default=Boolean.true, description="whether to stream the final output or not")
     e2e_log_folder:str = Field(default='loggers/e2e_logs', description="folder e2e logs are stored")
-    trajectory_log_folder:str = Field(default='loggers/trajectory_logs', description="folder trajectory logs are stored")
+    trajectory_only_log_folder:str = Field(default='loggers/trajectory_only_logs', description="folder trajectory logs are stored")
 
 
     @root_validator

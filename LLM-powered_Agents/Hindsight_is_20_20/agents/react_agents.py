@@ -72,7 +72,7 @@ class ReActAgent(BaseCustomAgent):
 
 
         brain = (
-            RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._format_scratchpad(x["intermediate_steps"]),) 
+            RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._parsing_intermediate_steps_into_str(x["intermediate_steps"]),) 
             | self.base_prompt
             | self.reasoninig_engine.bind(stop=self.stop_words)
             | RunnableLambda(fix_json, afunc=fix_json_async)
@@ -80,7 +80,7 @@ class ReActAgent(BaseCustomAgent):
         )  
         return brain      
 
-    def get_log_prefix(self):
+    def get_logger_name_prefix(self):
         korea_time = datetime.now(pytz.timezone('Asia/Seoul'))  
         year, month, day = korea_time.year, korea_time.month, korea_time.day
         return f'ReAct_{year}-{month}-{day}'
@@ -115,7 +115,7 @@ class ReActAgent(BaseCustomAgent):
 
 
     def func_execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
-        Thought, Action = self._get_Thought_and_Action(agent_action.log)
+        Thought, Action = self._parsing_Thought_and_Action_into_str(agent_action.log)
        
         # Observation or Answer
         Observation_loglevel = 'error'
@@ -158,7 +158,7 @@ class ReActAgent(BaseCustomAgent):
     ###########################################
     #### Agentic-simulation helper methods ####
     ###########################################
-    def _get_action_string(self, raw_action_string:str)-> str:
+    def _parsing_action_into_str(self, raw_action_string:str)-> str:
         try:
             data = json.loads(raw_action_string.strip().strip(' `\n'))  
             action = data.get('action', '')  
@@ -174,11 +174,18 @@ class ReActAgent(BaseCustomAgent):
             return Action
 
 
-    def _format_scratchpad(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
-        return format_log_to_str(intermediate_steps)
 
-
-    def _before_agent_trials(self):
+    def _before_agent_episode(self, query: str, reference: Optional[str]=None):
+        """Before starting a new episode"""
+        self.query = query
+        self.reference = reference if reference != None else ''
+        self.agent_log = ''
+        self.trajectory_only_log_for_reflexion = ''
+        self.prediction = ''
+        self.timestep: int = -1
+        self.is_finished: bool = False
+        self.agent_observation: Dict = None        
+        self.intermediate_steps: List = []
         self.judgement = ['', 0]
 
 
@@ -186,17 +193,7 @@ class ReActAgent(BaseCustomAgent):
         pass
 
 
-    def _before_agent_episode(self, query: str, reference: Optional[str]=None):
-        """Before staring a new episode"""
-        self.query = query
-        self.reference = reference if reference != None else ''
-        self.agent_log = ''
-        self.agent_log_for_trajectory = ''
-        self.prediction = ''
-        self.timestep: int = -1
-        self.is_finished: bool = False
-        self.agent_observation: Dict = None        
-        self.intermediate_steps: List = []
+    def _before_agent_trials(self):
         self.judgement = ['', 0]
 
 
@@ -217,3 +214,6 @@ class ReActAgent(BaseCustomAgent):
         else:
             judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', 'HALTED']
         return judgement
+
+    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+        return format_log_to_str(intermediate_steps)

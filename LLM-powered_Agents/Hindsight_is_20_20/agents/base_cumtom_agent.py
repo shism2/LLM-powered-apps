@@ -27,7 +27,7 @@ class BaseCustomAgent:
                 stop_words: List[str]|None=None,
                 horizon: int=6,
                 e2e_log_folder:str='loggers/e2e_logs',
-                trajectory_log_folder:str='loggers/trajectory_logs',
+                trajectory_only_log_folder:str='loggers/trajectory_only_logs',
                 file_logging:bool=False,
                 colsole_logging: bool=True,
                 ):
@@ -54,9 +54,9 @@ class BaseCustomAgent:
         self.colsole_logging = colsole_logging
         self.stop_words = stop_words
         self.agent_log: str = ''
-        self.agent_log_for_trajectory: str = ''
+        self.trajectory_only_log_for_reflexion: str = ''
         self.e2e_log_folder = e2e_log_folder
-        self.trajectory_log_folder = trajectory_log_folder
+        self.trajectory_only_log_folder = trajectory_only_log_folder
         self.file_logging = file_logging
 
         # prompt
@@ -69,41 +69,41 @@ class BaseCustomAgent:
 
 
         # loggers
-        self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_log_prefix()+'_e2e.log'), logger_name=self.get_log_prefix()+str(datetime.datetime.now())+'_e2e' )
-        self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_log_folder, self.get_log_prefix()+'_trajectory.log'), logger_name=self.get_log_prefix()+str(datetime.datetime.now())+'_trajectory' )
-        self.console_logger = get_hd22_stream_logger(logger_name=self.get_log_prefix()+str(datetime.datetime.now())+'_console')
+        self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), logger_name=self.get_logger_name_prefix()+str(datetime.datetime.now())+'_e2e' )
+        self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), logger_name=self.get_logger_name_prefix()+str(datetime.datetime.now())+'_trajectory' )
+        self.console_logger = get_hd22_stream_logger(logger_name=self.get_logger_name_prefix()+str(datetime.datetime.now())+'_console')
 
         # agent_reset
         self.agent_reset()
 
+
+
     #############################
     #### Fundamental methods ####
     #############################
+    def agent_reset(self):
+        self._before_agent_episode(query='')
+
     @property
     def base_prompt(self)-> ChatPromptTemplate:
-        '''
-        Override this property for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError
 
     @base_prompt.setter
     def base_prompt(self, new_prompt: ChatPromptTemplate)-> None:
-        '''
-        Override this property setter for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError    
 
     @property
     def brain(self)-> Any:
-        '''
-        Override this property for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError
 
-
-    def agent_reset(self):
-        self._before_agent_episode(query='')
-
+    def clear_logs(self):
+        with open(os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), 'w') as f:
+            f.write('')
+        with open(os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), 'w') as f:
+            f.write('')
 
 
     def collect_logs(self, message: str, console: Tuple[bool, str], e2e: Tuple[bool, str], trajectory: Tuple[bool, str]):
@@ -118,21 +118,10 @@ class BaseCustomAgent:
         trajectory_log_method = getattr(self.trajectory_logger, trajectory[1].lower())         
         if self.file_logging and trajectory[0]:
             trajectory_log_method(message)
-      
 
-    def clean_logs(self):
-        with open(os.path.join(self.e2e_log_folder, self.get_log_prefix()+'_e2e.log'), 'w') as f:
-            f.write('')
-        with open(os.path.join(self.trajectory_log_folder, self.get_log_prefix()+'_trajectory.log'), 'w') as f:
-            f.write('')
-
-
-    def get_log_prefix(self):
-        '''
-        Override this property for any child class
-        '''
+    def get_logger_name_prefix(self):
+        ''' Override this property for any child class '''
         raise NotImplementedError
-
 
 
 
@@ -140,15 +129,11 @@ class BaseCustomAgent:
     #### Agentic simulation methods ####
     ####################################
     def agent_step(self, query: str)-> Tuple[bool, AgentFinish|None]:
-        '''
-        Override this method for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError
 
     def func_execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
-        '''
-        Override this method for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError
 
 
@@ -177,9 +162,7 @@ class BaseCustomAgent:
 
 
     def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
-        '''
-        Override this method for any child class
-        '''
+        ''' Override this property for any child class '''
         raise NotImplementedError
 
 
@@ -187,7 +170,63 @@ class BaseCustomAgent:
     ###########################################
     #### Agentic-simulation helper methods ####
     ###########################################
-    def _get_Thought_and_Action(self, agent_action_log:str)-> Tuple[str, str]:
+    def _add_judgement_to_agent_log(self):
+        if self.judgement[1] != 'INCORRECT':
+            "Judgement does not contain the reference"
+            self.agent_log += self.judgement[0]
+            self.trajectory_only_log_for_reflexion = self.agent_log
+            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (True, 'info')) 
+        else:
+            self.trajectory_only_log_for_reflexion = copy.deepcopy(self.agent_log)
+            self.agent_log += self.judgement[0]
+            self.trajectory_only_log_for_reflexion += (self.judgement[0].split(" The correct answer is"))[0]
+            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (False, 'info')) 
+            self.collect_logs((self.judgement[0].split(" The correct answer is"))[0], (False, 'info'), (False, 'info'), (True, 'info')) 
+
+
+    def _base_prompt_postprocessing(self)-> ChatPromptTemplate:
+        '''
+        Override this method for any child class
+        '''
+        raise NotImplementedError
+
+
+    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+    def _before_agent_step(self):
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+    def _before_agent_trials(self):
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+    def _evaluation(self):
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+    def _is_halted(self, timestep:int)-> bool:
+        return self.timestep>self.horizon-2 and self.agent_observation==None
+
+
+    def _parsing_action_into_str(self, raw_action_string:str)-> str:
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+
+
+    def _parsing_Thought_and_Action_into_str(self, agent_action_log:str)-> Tuple[str, str]:
         Thought_loglevel = 'error'
         Action_loglevel = 'error'
         try:
@@ -200,7 +239,7 @@ class BaseCustomAgent:
                 Thought = f'Thought {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
     
             try:    
-                Action = self._get_action_string(action)
+                Action = self._parsing_action_into_str(action)
                 Action_loglevel = 'info'
             except Exception as e:
                 Action = f'Action {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
@@ -212,72 +251,18 @@ class BaseCustomAgent:
             self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
             return Thought, Action
 
-    def _add_judgement_to_agent_log(self):
-        if self.judgement[1] != 'INCORRECT':
-            "Judgement does not contain the reference"
-            self.agent_log += self.judgement[0]
-            self.agent_log_for_trajectory = self.agent_log
-            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (True, 'info')) 
-        else:
-            self.agent_log_for_trajectory = copy.deepcopy(self.agent_log)
-            self.agent_log += self.judgement[0]
-            self.agent_log_for_trajectory += (self.judgement[0].split(" The correct answer is"))[0]
-            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (False, 'info')) 
-            self.collect_logs((self.judgement[0].split(" The correct answer is"))[0], (False, 'info'), (False, 'info'), (True, 'info')) 
-
-  
-
-    def _is_halted(self, timestep:int)-> bool:
-        return self.timestep>self.horizon-2 and self.agent_observation==None
 
 
-    def _before_agent_step(self):
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
-    def _before_agent_trials(self):
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
-    def _get_action_string(self, raw_action_string:str)-> str:
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
-    def _format_scratchpad(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
-    def _base_prompt_postprocessing(self)-> ChatPromptTemplate:
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
-
-
-    def _evaluation(self):
-        '''
-        Override this method for any child class
-        '''
-        raise NotImplementedError
 
 
 

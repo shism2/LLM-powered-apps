@@ -24,7 +24,7 @@ class ReflexionReActAgent(ReActAgent):
     #############################
     #### Fundamental methods ####
     #############################
-    def get_log_prefix(self):
+    def get_logger_name_prefix(self):
         korea_time = datetime.now(pytz.timezone('Asia/Seoul'))  
         year, month, day = korea_time.year, korea_time.month, korea_time.day
         return f'ReflexionReAct_{year}-{month}-{day}'
@@ -75,7 +75,7 @@ class ReflexionReActAgent(ReActAgent):
             self.collect_logs(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
             if trial>0:
                     self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
-                    self.do_reflexion(self.agent_log_for_trajectory)
+                    self.do_reflexion(self.trajectory_only_log_for_reflexion)
                     reflexion_loglevel = 'info' if len(self.last_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
                     self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
                     self.collect_logs(self.last_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
@@ -102,8 +102,8 @@ class ReflexionReActAgent(ReActAgent):
     ######################################
     #### This-Class specific methods  ####
     ######################################
-    def do_reflexion(self, agent_log_for_trajectory:str)-> str:
-        new_reflexion = self.reflexion_chain(agent_log_for_trajectory)
+    def do_reflexion(self, trajectory_only_log_for_reflexion:str)-> str:
+        new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.last_reflexion = self.reflexion_header + new_reflexion
 
