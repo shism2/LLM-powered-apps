@@ -99,6 +99,7 @@ class GetFromYDCAPI(StructuredTool):
     args_schema : Type[GetFromYDCAPIArgs] = GetFromYDCAPIArgs
 
     class Config:
+        """This is nenessary because StructuredTool does not allow extra argument"""
         use_enum_values = False
         extra = 'allow'
 

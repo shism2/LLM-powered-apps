@@ -9,11 +9,13 @@ from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.output_parsers import JSONAgentOutputParser
 import re
 from langchain.schema.runnable import RunnableLambda
+from datetime import datetime
+import pytz
 
 class ReActAgent(BaseCustomAgent):
     def __init__(self, **kwargs):
             super().__init__(**kwargs)
-            
+
     #############################
     #### Fundamental methods ####
     #############################
@@ -78,6 +80,12 @@ class ReActAgent(BaseCustomAgent):
         )  
         return brain      
 
+    def get_log_prefix(self):
+        korea_time = datetime.now(pytz.timezone('Asia/Seoul'))  
+        year, month, day = korea_time.year, korea_time.month, korea_time.day
+        return f'ReAct_{year}-{month}-{day}'
+
+
     ####################################
     #### Agentic simulation methods ####
     ####################################
@@ -96,58 +104,56 @@ class ReActAgent(BaseCustomAgent):
                 tool_input='',
                 type = 'AgentAction')
         finally:
-            observation, agent_log = self.execution(agent_action=agent_action)
-            self.agent_log[-1] += agent_log
+            Observation, Thought_Action_Observation = self.func_execution(agent_action=agent_action)
+            self.agent_log += Thought_Action_Observation
 
             if isinstance(agent_action, AgentFinish):            
                 return True, agent_action        
             else:    
-                self.intermediate_steps.append((agent_action, observation))
+                self.intermediate_steps.append((agent_action, Observation))
                 return False, None            
 
 
-    def execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'], judgement=False)-> str|None:
-        if judgement:
-            self.agent_log[-1] += self.judgement[0]
-            self.print_on_stdout(self.judgement[0])
-            return
-
+    def func_execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
         Thought, Action = self._get_Thought_and_Action(agent_action.log)
        
         # Observation or Answer
+        Observation_loglevel = 'error'
         if isinstance(agent_action, AgentAction):
             try:
                 observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
                 Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
+                Observation_loglevel = 'info'
             except Exception as e:
-                Observation = f'Observation {self.timestep+1}: Filed to get Observation (function output). The tool is {agent_action.tool} and tool input is {agent_action.tool_input}. The error message is "{e}"'
+                Observation = f'Observation {self.timestep+1}: Failed to get Observation (function output). The tool is {agent_action.tool} and tool input is {agent_action.tool_input}. The error message is "{e}"'
             finally:     
-                self.print_on_stdout(Observation, sep='')
+                # self.print_on_stdout(Observation, sep='')
+                self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel)) 
                 return Observation, Thought+'\n'+Action+'\n'+Observation+'\n'
         else:
             try:
                 Observation = (f'Answer: '+agent_action.return_values['output']).rstrip('\n') 
+                Observation_loglevel = 'info'
             except Exception as e:
                 Observation = f'Answer: Failed to get the final answer. The error message is "{e}"'
             finally:
-                self.print_on_stdout(Observation, sep='')
+                # self.print_on_stdout(Observation, sep='')
+                self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
                 return None, Thought+'\n'+Action+'\n'+Observation+'\n'
 
 
-    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None, agent_log_reset=True)-> None:
-        '''
-        Override this method for any child class
-        '''
-        self.print_on_stdout(f"Query: {query}")
 
-        if agent_log_reset:
-            self.agent_log_reset()
+    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
+        self.collect_logs(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
+        self.collect_logs(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
+        self._before_agent_trials()
         
         trial=0
-        while self.judgement[1]!=1 and trial<num_trials:
-            self.print_on_stdout(f"---- Trial {trial+1} ----")
-            self.run_agent_episode(query=query, reference=reference, multiple_trials=True)  
+        while self.judgement[1]!='CORRECT' and trial<num_trials:     
+            self.collect_logs(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
+            self.run_agent_episode(query=query, reference=reference, trial=trial)  
             trial += 1
+
 
     ###########################################
     #### Agentic-simulation helper methods ####
@@ -163,7 +169,7 @@ class ReActAgent(BaseCustomAgent):
             Action = f'Action: {action}({action_input})'
             Action = Action.replace('Action: ', f'Action {self.timestep+1}: ')
         except Exception as e:
-            Action = f'Action {self.timestep+1}: Filed to parse Action. The error message is "{e}"'
+            Action = f'Action {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
         finally:
             return Action
 
@@ -172,16 +178,20 @@ class ReActAgent(BaseCustomAgent):
         return format_log_to_str(intermediate_steps)
 
 
+    def _before_agent_trials(self):
+        self.judgement = ['', 0]
+
 
     def _before_agent_step(self):
         pass
 
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+
+    def _before_agent_episode(self, query: str, reference: Optional[str]=None):
         """Before staring a new episode"""
-        if query != None:
-            self.query = query
-        if reference != None:
-            self.reference = reference
+        self.query = query
+        self.reference = reference if reference != None else ''
+        self.agent_log = ''
+        self.agent_log_for_trajectory = ''
         self.prediction = ''
         self.timestep: int = -1
         self.is_finished: bool = False
@@ -201,9 +211,9 @@ class ReActAgent(BaseCustomAgent):
             evaluation = 'HALTED'
 
         if evaluation == 'CORRECT':            
-            judgement =  ['Jugdement: Your answer is correct.', 1]
+            judgement =  ['Jugdement: Your answer is correct.', 'CORRECT']
         elif evaluation == 'INCORRECT':
-            judgement =  [f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"', 0]
+            judgement =  [f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"', 'INCORRECT']
         else:
-            judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', -1]
+            judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', 'HALTED']
         return judgement

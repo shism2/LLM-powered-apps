@@ -50,9 +50,9 @@ class BaseReflexionChain:
 
     def __call__(self, previous_trial: str)-> str:
         try:
-            reflexion = '- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
+            reflexion = '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
         except Exception as e:
-            reflexion = f'- I couldn\'t produce a reflection for this trial because of an unexpected error. The error message if {e}'
+            reflexion = '\n- ' + f'I could not produce a reflexion for this trial because of an unexpected error to my reflexion brain. The error message if {e}'
         return reflexion
 
 
