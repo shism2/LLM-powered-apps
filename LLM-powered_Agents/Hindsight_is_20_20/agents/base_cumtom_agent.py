@@ -48,8 +48,8 @@ class BaseCustomAgent:
         self.reference = ''
         self.prediction = ''
         self.judgement: List = ['', 0]
-        self.thought_word = thought_word
-        self.action_word = action_word
+        self.thought_word = thought_word+':' if len(thought_word.split(':'))==1 else thought_word
+        self.action_word = action_word+':' if len(action_word.split(':'))==1 else action_word
         self.horizon = horizon
         self.colsole_logging = colsole_logging
         self.stop_words = stop_words
@@ -152,13 +152,13 @@ class BaseCustomAgent:
             self.timestep += 1
             self.is_finished, self.agent_observation = self.agent_step(query)
 
-        if reference != None:
-            '''
-            At this stage, the agents either gave an answer or has been halted.
-            '''
-            self.prediction = self.agent_observation.return_values['output'] if isinstance(self.agent_observation, AgentFinish) else "HALTED"
-            self.judgement = self._evaluation()
-            self._add_judgement_to_agent_log()
+
+        # evaluation
+        self.prediction = self.agent_observation.return_values['output'] if isinstance(self.agent_observation, AgentFinish) else "HALTED"
+        self.judgement = self._evaluation()
+        self._add_judgement_to_agent_log()
+
+
 
 
     def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
@@ -214,6 +214,12 @@ class BaseCustomAgent:
     def _is_halted(self, timestep:int)-> bool:
         return self.timestep>self.horizon-2 and self.agent_observation==None
 
+    def _parsing_action_argument_value(self, value):
+        try:
+            float(value)
+        except:
+            value = "'"+value+"'"
+        return value
 
     def _parsing_action_into_str(self, raw_action_string:str)-> str:
         ''' Override this property for any child class '''
@@ -233,19 +239,19 @@ class BaseCustomAgent:
             thought, action = re.split(self.action_word, agent_action_log)  
             try:    
                 Thought = thought.strip()
-                Thought = f'Thought {self.timestep+1}: '+Thought if len(Thought.split(self.thought_word))==1 else Thought.replace('Thought: ', f'Thought {self.timestep+1}: ')
+                Thought = f'{self.thought_word[:-1]} {self.timestep+1}: '+Thought  if len(Thought.split(self.thought_word))==1 else Thought.replace(f'{self.thought_word[:-1]}: ', f'{self.thought_word[:-1]} {self.timestep+1}: ')
                 Thought_loglevel = 'info'
             except Exception as e:
-                Thought = f'Thought {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
+                Thought = f'{self.thought_word[:-1]} {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
     
             try:    
                 Action = self._parsing_action_into_str(action)
                 Action_loglevel = 'info'
             except Exception as e:
-                Action = f'Action {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
+                Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
         except Exception as e:
-            Thought = f'Thought {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
-            Action = f'Action {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
+            Thought = f'{self.thought_word[:-1]} {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
+            Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
         finally:
             self.collect_logs(Thought, (True, Thought_loglevel), (True, Thought_loglevel), (True, Thought_loglevel))
             self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))

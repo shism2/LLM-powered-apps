@@ -99,7 +99,7 @@ class ReActAgent(BaseCustomAgent):
         except Exception as e:
             """ This catches the exception where the brain fails to produce AgentAction or AgentFinish.  """
             agent_action = AgentAction(
-                log='Thought: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+                log=f'{self.thought_word[:-1]}: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
                 tool='',
                 tool_input='',
                 type = 'AgentAction')
@@ -158,18 +158,24 @@ class ReActAgent(BaseCustomAgent):
     ###########################################
     #### Agentic-simulation helper methods ####
     ###########################################
+
+
     def _parsing_action_into_str(self, raw_action_string:str)-> str:
         try:
             data = json.loads(raw_action_string.strip().strip(' `\n'))  
             action = data.get('action', '')  
             try:
-                action_input = ', '.join(f'{k}={v}' for k, v in data.get('action_input', {}).items())  
+                action_input = ', '.join(f'{k}={self._parsing_action_argument_value(v)}' for k, v in data.get('action_input', {}).items())  
             except AttributeError:
-                action_input = data.get('action_input')
-            Action = f'Action: {action}({action_input})'
-            Action = Action.replace('Action: ', f'Action {self.timestep+1}: ')
+                if action!='Python_REPL':
+                    action_input = self._parsing_action_argument_value(data.get('action_input'))
+                else:
+                    action_input = data.get('action_input')
+
+            Action = f'{self.action_word[:-1]}: {action}({action_input})'
+            Action = Action.replace(f'{self.action_word[:-1]}: ', f'{self.action_word[:-1]} {self.timestep+1}: ')
         except Exception as e:
-            Action = f'Action {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
+            Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
         finally:
             return Action
 
@@ -198,12 +204,12 @@ class ReActAgent(BaseCustomAgent):
 
 
     def _evaluation(self)-> str:
-        if self.prediction != 'HALTED':
+        if self.prediction != 'HALTED':            
             evaluation = self.evaluator(
                 query = self.query,
                 prediction = self.prediction,
                 reference = self.reference
-            )['value']
+            )['value'] if self.reference != '' else 'NO_REFERENCE'
         else:
             evaluation = 'HALTED'
 
@@ -211,6 +217,8 @@ class ReActAgent(BaseCustomAgent):
             judgement =  ['Jugdement: Your answer is correct.', 'CORRECT']
         elif evaluation == 'INCORRECT':
             judgement =  [f'Jugdement: Your answer is incorrect. The correct answer is "{self.reference}"', 'INCORRECT']
+        elif evaluation == 'NO_REFERENCE':
+            judgement =  [f'Jugdement: There is no reference.', 'NO_REFERENCE']
         else:
             judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', 'HALTED']
         return judgement

@@ -46,7 +46,7 @@ class ReflexionReActAgent(ReActAgent):
         except Exception as e:
             """ This catches the exception where the brain fails to produce AgentAction or AgentFinish.  """
             agent_action = AgentAction(
-                log='Thought: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
+                log=f'{self.thought_word[:-1]}: Unexpected exception has been raised. Brain cannot produce AgentAction or AgentFinish. ' + f'The error message is "{e}".'+ f'\n{self.action_word[:-1]}:'+'\n```\n{\n"action": "",\n"action_input": ""\n}\n```',
                 tool='',
                 tool_input='',
                 type = 'AgentAction')
