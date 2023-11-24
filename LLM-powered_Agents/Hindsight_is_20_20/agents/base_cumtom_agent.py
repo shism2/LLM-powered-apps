@@ -11,6 +11,8 @@ from langchain.agents.format_scratchpad.log import format_log_to_str
 from langchain import hub
 from langchain.tools.render import render_text_description_and_args
 from loggers.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
+from openai.error import RateLimitError
+import time
 
 
 class BaseCustomAgent:
@@ -22,6 +24,8 @@ class BaseCustomAgent:
                 action_word: str,
                 thought_word: Optional[str]=None, 
                 stop_words: List[str]|None=None,
+                retry_RateLimitError: bool = True,
+                retry_standby = 20,
                 horizon: int=5,
                 e2e_log_folder: str='loggers/e2e_logs',
                 trajectory_only_log_folder: str='loggers/trajectory_only_logs',
@@ -41,6 +45,8 @@ class BaseCustomAgent:
         self.evaluator = evaluator
         self.action_word = action_word+':' if (action_word!=None and len(action_word.split(':'))==1) else action_word
         self.thought_word = thought_word+':' if (thought_word!=None and len(thought_word.split(':'))==1) else thought_word
+        self.retry_RateLimitError = retry_RateLimitError
+        self.retry_standby = retry_standby
         self.stop_words = stop_words
         self.horizon = horizon
         self.e2e_log_folder = e2e_log_folder
@@ -121,22 +127,44 @@ class BaseCustomAgent:
         words = sentence.lower().split()    
         return word.lower() in words  
 
+    def sleep(self, e):
+        try:
+            wait_time = int(str(e).split(' Please retry after ')[1].split(' seconds. ')[0])
+        except:
+            wait_time = self.retry_standby
+        print(f'RateLimitError -----> Will automatically retry {wait_time} seconds later.')     
+        for s in range(wait_time, 0, -1):
+            print(s, end=' ')
+            time.sleep(1)
+
+
     ####################### Simulation methods #######################
     def agent_step(self, query: str)-> AgentFinish|AgentAction:
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
         """
-        self._before_agent_step()
-        try:
-            agent_action = self._invoke_agent_action(query)
+        self._before_agent_step()        
+        try: 
+            if self.retry_RateLimitError:
+                FLAG = True
+                while FLAG:
+                    try:
+                        agent_action = self._invoke_agent_action(query)
+                        FLAG = False
+                    except RateLimitError as e:
+                                           
+                        self.sleep(e)
+            else:
+                agent_action = self._invoke_agent_action(query)
             Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
+
         except Exception as e:
             """ This catches the exception where the brain fails to produce AgentAction or AgentFinish.  """
             agent_action = self._invoke_agent_action_for_exception(e)
             Observation, temp_scratchpad = self._func_execution_for_exception(e)
+        
         self.agent_log += temp_scratchpad
-
         self.done = True if isinstance(agent_action, AgentFinish) else False 
         return agent_action, Observation        
 
@@ -281,11 +309,13 @@ class BaseCustomAgent:
         Action_loglevel = 'error'
         if self.thought_word!=None:
             thought, action = re.split(self.action_word, agent_action_log)  
+            if self.contains_word(action, "```json"):
+                action = action.replace("```json", "```") # proactive correcting for gpt-4-turbo 1106
             try:
                 Thought = self._parsing_thought_into_str(thought)
                 Thought_loglevel = 'info'
             except Exception as e:
-                Thought = f'{self.thought_word[:-1]} {self.timestep+1}: Failed to parse Thought into str. The error message is "{e}"'
+                Thought = f'{self.thought_word[:-1]} {self.timestep+1}: Failed to parse Thought into str. The original string is "{thought}"'
             self.collect_logs(Thought, (True, Thought_loglevel), (True, Thought_loglevel), (True, Thought_loglevel))        
         else:
             Thought = ''
@@ -295,7 +325,7 @@ class BaseCustomAgent:
             Action = self._parsing_action_into_str(action)
             Action_loglevel = 'info'
         except Exception as e:
-            Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The error message is "{e}"'
+            Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The original string is "{action}"'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
 
         return Thought, Action 
@@ -311,8 +341,8 @@ class BaseCustomAgent:
 
     def _parsing_action_into_str(self, raw_action_string:str)-> str:
         try:
-            data = json.loads(raw_action_string.strip().strip(' `\n'))  
-            action = data.get('action', '')  
+            data = json.loads(raw_action_string.strip().strip(' `\n'))
+            action = data.get('action', '')
             try:
                 action_input = ', '.join(f'{k}={self._parsing_action_argument_value(v)}' for k, v in data.get('action_input', {}).items())  
             except AttributeError:
@@ -342,7 +372,17 @@ class BaseCustomAgent:
         Observation_loglevel = 'error'
         if isinstance(agent_action, AgentAction):
             try:
-                observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
+                if self.retry_RateLimitError:
+                    FLAG = True
+                    while FLAG:
+                        try:
+                            observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
+                            FLAG = False
+                        except RateLimitError as e:
+                            self.sleep(e)                           
+
+
+                    
                 Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
                 Observation_loglevel = 'info'
             except Exception as e:

@@ -12,12 +12,12 @@ def get_tool_list(config: Optional[Configurations]=None, return_tool_dictionary:
         time_tool = time_tools.GetFromDatetimeModule()
         python_repl_tool = python_repl_tools.GetLangChainPythonRepl()
 
-        # tools = [
-        #         search_tool, weather_tool, math_tool, time_tool, python_repl_tool
-        # ]
         tools = [
-                search_tool, weather_tool, time_tool, python_repl_tool
+                search_tool, weather_tool, math_tool, time_tool, python_repl_tool
         ]
+        # tools = [
+        #         search_tool, weather_tool, time_tool, python_repl_tool
+        # ]
 
         if return_tool_dictionary:
                 tool_dictionary  = { tool.name:tool for tool in tools}
