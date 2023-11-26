@@ -1,6 +1,7 @@
 import os, copy, json, re, pytz, logging  
 from typing import List, Tuple, Any, Dict, Optional, Literal
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema.agent import AgentAction, AgentFinish
@@ -13,13 +14,18 @@ from langchain.tools.render import render_text_description_and_args
 from loggers.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
 from openai.error import RateLimitError
 import time
+from utils.wrappers import retry_rate_limit_error
+
+
+
 
 
 class BaseCustomAgent:
+
     def __init__(self,
                 reasoninig_engine: Any,
                 base_prompt: ChatPromptTemplate|str,
-                tools: List[Tool],
+                schemas_and_tools: List[Tuple[BaseModel, Dict[str, Tool]]],
                 evaluator: Any,
                 action_word: str,
                 thought_word: Optional[str]=None, 
@@ -41,7 +47,7 @@ class BaseCustomAgent:
             raise ValueError("Error in 'base_prompt'.")
         self.base_system_prompt = base_prompt[0]
         self.base_human_prompt = base_prompt[1]        
-        self.tools = tools
+        self.schemas_and_tools = schemas_and_tools
         self.evaluator = evaluator
         self.action_word = action_word+':' if (action_word!=None and len(action_word.split(':'))==1) else action_word
         self.thought_word = thought_word+':' if (thought_word!=None and len(thought_word.split(':'))==1) else thought_word
@@ -57,7 +63,10 @@ class BaseCustomAgent:
 
 
         ### Induced attributes
-        self.tool_dictionary = { tool.name:tool for tool in self.tools}
+        self.schemas = [schema for schema, tool in self.schemas_and_tools]
+        self.tools_and_names = [tool for schema, tool in self.schemas_and_tools]
+        self.tools = [tool for name, tool in self.tools_and_names]
+        self.tool_dictionary = {name:tool for name, tool in self.tools_and_names}
         self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_e2e' )
         self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_trajectory' )
         self.console_logger = get_hd22_stream_logger(logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_console')
@@ -146,17 +155,13 @@ class BaseCustomAgent:
         """
         self._before_agent_step()        
         try: 
-            if self.retry_RateLimitError:
-                FLAG = True
-                while FLAG:
-                    try:
-                        agent_action = self._invoke_agent_action(query)
-                        FLAG = False
-                    except RateLimitError as e:
-                                           
-                        self.sleep(e)
-            else:
-                agent_action = self._invoke_agent_action(query)
+            FALG = True
+            while FALG:
+                try:
+                    agent_action = self._invoke_agent_action(query)
+                    FALG = False
+                except RateLimitError as e:
+                    self.sleep(e)            
             Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
 
         except Exception as e:
@@ -266,6 +271,12 @@ class BaseCustomAgent:
         self.judgement = ['', "PENDING"]
 
 
+
+
+    @retry_rate_limit_error
+    def _get_function_observation(self, tool, tool_input):
+        return self.tool_dictionary[tool].run(tool_input)
+
     def _invoke_agent_action(self, query):
         ''' Override this property for any child class  IF NECESSARY'''
         return self.brain.invoke({
@@ -372,17 +383,7 @@ class BaseCustomAgent:
         Observation_loglevel = 'error'
         if isinstance(agent_action, AgentAction):
             try:
-                if self.retry_RateLimitError:
-                    FLAG = True
-                    while FLAG:
-                        try:
-                            observation = self.tool_dictionary[agent_action.tool].run(agent_action.tool_input)
-                            FLAG = False
-                        except RateLimitError as e:
-                            self.sleep(e)                           
-
-
-                    
+                observation = self._get_function_observation(agent_action.tool, agent_action.tool_input)
                 Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
                 Observation_loglevel = 'info'
             except Exception as e:

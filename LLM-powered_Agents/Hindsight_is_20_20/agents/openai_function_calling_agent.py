@@ -37,6 +37,7 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
         )
 
 
+
     def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
         ''' Override this property for any child class  IF NECESSARY'''
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
