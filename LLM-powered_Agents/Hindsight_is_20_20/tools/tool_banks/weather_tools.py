@@ -18,8 +18,8 @@ class OpenWeatherMap(BaseModel):
     """Get the weather information in a given location.\
 This provides only the current weather and weather forecast for up to 7 days.\
 This CANNOT provide historical weather data."""
-    IANA_timezone: str = Field(default='Asia/Seoul', description='IANA Timezone of which you know the current weather')
-    Days_from_now: int = Field(default=0, ge=0, le=7, description='Number of days after today. 0 means today and 1 means tomorrow, and 2 means the day after tomorrow')
+    IANA_timezone: str = Field(default='Asia/Seoul', description="IANA Timezone of which you know the current weather. Default is 'Asia/Seoul'.")
+    Days_from_now: int = Field(default=0, ge=0, le=7, description="Number of days after today. 0 means today and 1 means tomorrow, and 2 means the day after tomorrow. Default is 0.")
 
 
 class OpenWeatherMapTool:
@@ -58,4 +58,4 @@ This CANNOT provide historical weather data."
 
 
 def get_OpenWeatherMap_schema_and_tool():
-    return OpenWeatherMap, ('OpenWeatherMap', OpenWeatherMapTool())
+    return OpenWeatherMap, OpenWeatherMapTool()

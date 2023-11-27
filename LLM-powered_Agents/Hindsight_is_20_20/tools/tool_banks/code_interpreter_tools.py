@@ -12,7 +12,7 @@ class PythonREPL(BaseModel):
     """A Python shell. Use this to execute python commands.\
 Input should be a valid python command. If you want to see the output of a value, \
 you should print it out with `print(...)`."""
-    command : str = Field() 
+    command : str = Field(description="Valid python command. Must be 'print(...)'") 
 
 class PythonREPLTool:
     # For backward compatibility
@@ -38,7 +38,7 @@ you should print it out with `print(...)`."
 
 
 def get_PythonREPL_schema_and_tool():
-    return PythonREPL, ('PythonREPL', PythonREPLTool())
+    return PythonREPL, PythonREPLTool()
 
 
 

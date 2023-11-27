@@ -1,6 +1,8 @@
 from agents.base_cumtom_agent import BaseCustomAgent
 from langchain.tools.render import render_text_description_and_args
-from typing import List, Tuple, Any, Dict, Optional, Literal
+from typing import List, Tuple, Any, Dict, Optional, Literal, Type
+from pydantic import BaseModel, Field
+from langchain.agents import Tool
 import json
 from langchain.schema.agent import AgentAction, AgentFinish
 from langchain.agents.format_scratchpad.log import format_log_to_str
@@ -16,12 +18,21 @@ class ReActAgent(BaseCustomAgent):
     def __init__(self, **kwargs):
             super().__init__(**kwargs)
 
+
+    def _tool_description_for_system_msg_(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
+        """adapted from langchain's render_text_description_and_args """
+        tool_strings = []
+        for schema, tool in zip(schemas, tools):
+            tool_strings.append(f"{tool.name}: {tool.description}, args: {str(schema.schema()['properties'])}")
+        return "\n".join(tool_strings)
+
+
     ''' Base prompt for brain (agent chain) : OVERRIDE'''
     @property
     def base_prompt(self)-> ChatPromptTemplate:
         prompt = ChatPromptTemplate.from_messages([self.base_system_prompt, self.base_human_prompt])
         prompt = prompt.partial(
-            tools=render_text_description_and_args(self.tools),
+            tools=self._tool_description_for_system_msg_(self.schemas, self.tools),
             tool_names=", ".join([t.name for t in self.tools]),
             )
         return prompt

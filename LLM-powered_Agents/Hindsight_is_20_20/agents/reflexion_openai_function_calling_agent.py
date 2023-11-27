@@ -23,7 +23,6 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
 
  
-    ''' OVERRIDE '''
     def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
         ''' Override this property for any child class IF NECESSARY'''
         self.query = query
@@ -37,11 +36,11 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
         self.a = None
         self.s_prime = ''
         if self.trial>0:
-                self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
-                self.do_reflexion(self.trajectory_only_log_for_reflexion)
-                reflexion_loglevel = 'info' if len(self.most_recent_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
-                self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
-                self.collect_logs(self.most_recent_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
+            self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
+            self._do_reflexion_(self.trajectory_only_log_for_reflexion)
+            reflexion_loglevel = 'info' if len(self.most_recent_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
+            self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
+            self.collect_logs(self.most_recent_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
 
 
 
@@ -52,7 +51,7 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
             raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
         self.trial=0
         self.judgement = ['', 0]
-        self.reflexion_reset()
+        self._reflexion_reset_()
 
 
     ''' OVERRIDE '''
@@ -60,17 +59,17 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,
                 'input': query,
-                'reflections':self.reflexion, 
+                'reflections':self.reflexion if self.trial>0 else '', 
             })
 
     ''' Reflect '''
-    def do_reflexion(self, trajectory_only_log_for_reflexion:str)-> str:
+    def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
 
         new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.most_recent_reflexion = self.reflexion_header + new_reflexion
 
     ''' Reset reflextions '''
-    def reflexion_reset(self)-> None:
+    def _reflexion_reset_(self)-> None:
         self.reflexion = ''+self.reflexion_header
         self.most_recent_reflexion = None

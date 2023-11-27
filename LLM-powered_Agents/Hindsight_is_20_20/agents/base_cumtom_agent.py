@@ -1,5 +1,5 @@
 import os, copy, json, re, pytz, logging  
-from typing import List, Tuple, Any, Dict, Optional, Literal
+from typing import List, Tuple, Any, Dict, Optional, Literal, Type
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -64,9 +64,8 @@ class BaseCustomAgent:
 
         ### Induced attributes
         self.schemas = [schema for schema, tool in self.schemas_and_tools]
-        self.tools_and_names = [tool for schema, tool in self.schemas_and_tools]
-        self.tools = [tool for name, tool in self.tools_and_names]
-        self.tool_dictionary = {name:tool for name, tool in self.tools_and_names}
+        self.tools = [tool for schema, tool in self.schemas_and_tools]
+        self.tool_dictionary = {schema.__name__:tool for schema, tool in self.schemas_and_tools}
         self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_e2e' )
         self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_trajectory' )
         self.console_logger = get_hd22_stream_logger(logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_console')
@@ -92,7 +91,13 @@ class BaseCustomAgent:
 
 
 
+
+
     ####################### Fundamental methods #######################
+    def agent_reset(self):
+        self._before_agent_episode()
+        self._before_agent_trials(reference='Instance initialization')
+
     @property
     def base_prompt(self)-> ChatPromptTemplate:
         ''' Override this property for any child class '''
@@ -148,7 +153,7 @@ class BaseCustomAgent:
 
 
     ####################### Simulation methods #######################
-    def agent_step(self, query: str)-> AgentFinish|AgentAction:
+    def agent_step(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
@@ -170,8 +175,8 @@ class BaseCustomAgent:
             Observation, temp_scratchpad = self._func_execution_for_exception(e)
         
         self.agent_log += temp_scratchpad
-        self.done = True if isinstance(agent_action, AgentFinish) else False 
-        return agent_action, Observation        
+        done = True if isinstance(agent_action, AgentFinish) else False 
+        return agent_action, Observation, done       
 
 
     def run_agent_episode(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
@@ -184,14 +189,15 @@ class BaseCustomAgent:
             self.collect_logs(f"Trial {trial+1}", (False, 'info'), (False, 'info'), (True, 'info'))
             self.collect_logs(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
-        while (not self.done) and (not self._is_halted(self.timestep)):
+        while not self.done:
             self.timestep += 1
-            self.a, self.s_prime  = self.agent_step(query)
-            if not isinstance(self.a, AgentFinish):  
-                self.intermediate_steps.append((self.a, self.s_prime))
+            self.a, self.s_prime, done  = self.agent_step(query)   
+            if not done:  
+                self.intermediate_steps.append((self.a, self.s_prime))            
+            self.done = True if (done) or (self._is_halted(self.timestep)) else False
 
         # assessment the output
-        if isinstance(self.a, AgentFinish):
+        if not self._is_halted(self.timestep):
             self.prediction = self.a.return_values['output'] 
         else: 
             self.prediction = "HALTED"
@@ -204,7 +210,7 @@ class BaseCustomAgent:
         self.collect_logs(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
         self.collect_logs(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
         
-        while self.judgement[1]!='CORRECT' and self.trial<num_trials:    
+        while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
             self.collect_logs(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
             self.run_agent_episode(query=query, reference=reference, trial=self.trial)  
             self.trial += 1
@@ -275,7 +281,7 @@ class BaseCustomAgent:
 
     @retry_rate_limit_error
     def _get_function_observation(self, tool, tool_input):
-        return self.tool_dictionary[tool].run(tool_input)
+        return self.tool_dictionary[tool].run(**tool_input)
 
     def _invoke_agent_action(self, query):
         ''' Override this property for any child class  IF NECESSARY'''
@@ -357,11 +363,7 @@ class BaseCustomAgent:
             try:
                 action_input = ', '.join(f'{k}={self._parsing_action_argument_value(v)}' for k, v in data.get('action_input', {}).items())  
             except AttributeError:
-                # Final answer or Python_REPL
-                if action!='Python_REPL':
-                    action_input = self._parsing_action_argument_value(data.get('action_input'))
-                else:
-                    action_input = data.get('action_input')
+                action_input = data.get('action_input')
 
             Action = f'{self.action_word[:-1]}: {action}({action_input})'
             Action = Action.replace(f'{self.action_word[:-1]}: ', f'{self.action_word[:-1]} {self.timestep+1}: ')

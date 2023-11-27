@@ -6,7 +6,7 @@ import asyncio
 
 class GetDatetime(BaseModel):
     """Get the current time in a given location."""    
-    IANA_timezone: str = Field(default='Asia/Seoul', description='IANA Timezone of which you know the current time')
+    IANA_timezone: str = Field(default='Asia/Seoul', description="IANA Timezone of which you know the current time. Default is 'Asia/Seoul'.")
 
 
 class GetDatetimeTool:
@@ -28,4 +28,4 @@ class GetDatetimeTool:
 
 
 def get_GetDatetimeTool_schema_and_tool():
-    return GetDatetime, ('GetDatetime', GetDatetimeTool())
+    return GetDatetime, GetDatetimeTool()
