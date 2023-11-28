@@ -14,7 +14,7 @@ from langchain.tools.render import render_text_description_and_args
 from loggers.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
 from openai import RateLimitError
 import time
-from utils.wrappers import retry_rate_limit_error
+from utils.wrappers import retry
 
 
 
@@ -159,14 +159,18 @@ class BaseCustomAgent:
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
         """
         self._before_agent_step()        
+        # try: 
+        #     FALG = True
+        #     while FALG:
+        #         try:
+        #             agent_action = self._invoke_agent_action(query)
+        #             FALG = False
+        #         except RateLimitError as e:
+        #             self.sleep(e)            
+        #     Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
+        
         try: 
-            FALG = True
-            while FALG:
-                try:
-                    agent_action = self._invoke_agent_action(query)
-                    FALG = False
-                except RateLimitError as e:
-                    self.sleep(e)            
+            agent_action = self._invoke_agent_action(query)        
             Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
 
         except Exception as e:
@@ -279,10 +283,18 @@ class BaseCustomAgent:
 
 
 
-    @retry_rate_limit_error
+    @retry(allowed_exceptions=(RateLimitError,))
     def _get_function_observation(self, tool, tool_input):
         return self.tool_dictionary[tool].run(**tool_input)
 
+    # def _invoke_agent_action(self, query):
+    #     ''' Override this property for any child class  IF NECESSARY'''
+    #     return self.brain.invoke({
+    #             'intermediate_steps': self.intermediate_steps,
+    #             'input': query,
+    #         })
+
+    @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):
         ''' Override this property for any child class  IF NECESSARY'''
         return self.brain.invoke({

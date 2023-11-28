@@ -10,7 +10,7 @@ from langchain.utils.openai_functions import convert_pydantic_to_openai_tool
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.runnable import RunnablePassthrough, RunnableSequence
 from langchain.agents.format_scratchpad import format_to_openai_function_messages
-from utils.wrappers import retry_rate_limit_error
+from utils.wrappers import retry
 
 
 class MyAIMessageToAgentActionParserForParallelFunctionCalling(JsonOutputToolsParser):

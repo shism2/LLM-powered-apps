@@ -6,7 +6,7 @@ from langchain.tools.render import render_text_description_and_args
 from langchain.schema.runnable import RunnableSequence
 from pydantic import BaseModel, Field
 from openai import RateLimitError
-import time
+from utils.wrappers import retry
 
 class BaseReflexionChain:
     def __init__(self, 
@@ -57,30 +57,29 @@ class BaseReflexionChain:
     def reflexion_chain(self)-> RunnableSequence:
         return self.prompt | self.reasoninig_engine    
 
-    def sleep(self, e):
-        try:
-            wait_time = int(str(e).split(' Please retry after ')[1].split(' seconds. ')[0])
-        except:
-            wait_time = self.retry_standby
-        print(f'RateLimitError -----> Will automatically retry {wait_time} seconds later.')     
-        for s in range(wait_time, 0, -1):
-            print(s, end=' ')
-            time.sleep(1)
 
+    # def __call__(self, previous_trial: str)-> str:
+    #     try:
+    #         FLAG = True
+    #         while FLAG:
+    #             try:
+    #                 reflexion = '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
+    #                 FLAG = False
+    #             except RateLimitError as e:
+    #                 self.sleep(e)                      
+    #     except Exception as e:
+    #         reflexion = '\n- ' + f'I could not produce a reflexion for this trial because of an unexpected error to my reflexion brain. The error message if {e}'
+    #     return reflexion
+
+    @retry(allowed_exceptions=(RateLimitError,))
+    def get_reflextion(self, previous_trial: str)->str:
+        return '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content                                  
 
 
     def __call__(self, previous_trial: str)-> str:
         try:
-            FLAG = True
-            while FLAG:
-                try:
-                    reflexion = '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
-                    FLAG = False
-                except RateLimitError as e:
-                    self.sleep(e)                      
+            reflexion = self.get_reflextion(previous_trial)
         except Exception as e:
             reflexion = '\n- ' + f'I could not produce a reflexion for this trial because of an unexpected error to my reflexion brain. The error message if {e}'
         return reflexion
-
-
 

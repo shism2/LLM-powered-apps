@@ -4,7 +4,8 @@ from langchain.evaluation import load_evaluator
 from utils.agent_components.get_llm import LangChainLLMWrapper
 from utils.agent_components.configurations import Configurations
 from typing import Optional
-from utils.wrappers import retry_rate_limit_error
+from utils.wrappers import retry
+from openai import RateLimitError
 
 def normalize_answer(answer: str)-> None:
     '''
@@ -43,7 +44,7 @@ class QA_Evaluator:
         self.evaluator_type = 'qa'
         self.evaluator = load_evaluator(evaluator=self.evaluator_type, llm=self.llm)
 
-    @retry_rate_limit_error
+    @retry(allowed_exceptions=(RateLimitError,))
     def __call__(self, query: str, reference: str, prediction: str):
         return self.evaluator.evaluate_strings(
             input = query, 

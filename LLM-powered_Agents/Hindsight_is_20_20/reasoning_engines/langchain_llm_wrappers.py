@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 from langchain.chat_models import AzureChatOpenAI
 import time
 from openai import RateLimitError
+from utils.wrappers import retry
 
 
 def QuickAzureChatOpenAI(version:str, max_retries:int=0, model_kwargs:Dict={}, **kwargs):
@@ -31,8 +32,24 @@ class QuickOpenAIClient():
         self.env.openai()
         self.model = 'gpt-4-1106-preview'
     
+    @retry(allowed_exceptions=(RateLimitError,))
+    def get_chat_response_no_tool_use(self, messages, model, stream):
+        return self.client.with_options(max_retries=0).chat.completions.create(
+                        messages=messages,
+                        model=self.model,
+                        stream=stream)
 
-    def chat_completions_create(self, query:Optional[str]=None, messages:Optional[List[Dict]]=None, tools:Optional[List]=None, return_message=True, stream=False, max_retries=0):
+    @retry(allowed_exceptions=(RateLimitError,))
+    def get_chat_response_tool_use(self, messages, model, stream, tools):
+        return self.client.with_options(max_retries=0).chat.completions.create(
+                        messages=messages,
+                        model=self.model,
+                        stream=stream,
+                        tools = tools,
+                        tool_choice = 'auto')
+
+
+    def chat_completions_create(self, query:Optional[str]=None, messages:Optional[List[Dict]]=None, tools:Optional[List]=None, return_message=True, stream=False):
         if messages != None:
             messages = messages
         else:
@@ -41,32 +58,7 @@ class QuickOpenAIClient():
             else:
                 raise ValueError("Pass in either query or messages")
         self.reload_envs()
-        while True:
-            try:
-                if tools==None:
-                    chat_response = self.client.with_options(max_retries=max_retries).chat.completions.create(
-                        messages=messages,
-                        model=self.model,
-                        stream=stream
-                    )
-                else:
-                    chat_response = self.client.with_options(max_retries=max_retries).chat.completions.create(
-                        messages=messages,
-                        model=self.model,
-                        stream=stream,
-                        tools = tools,
-                        tool_choice = 'auto',
-                    )
-            except RateLimitError as e:
-                try:
-                    wait_time = int(str(e).split(' Please retry after ')[1].split(' seconds. ')[0])
-                except:
-                    wait_time = 20
-                print(f'RateLimitError -----> Will automatically retry {wait_time} seconds later.')     
-                for s in range(wait_time, 0, -1):
-                    print(s, end=' ')
-                    time.sleep(1)                
-
+        chat_response = self.get_chat_response_tool_use(messages=messages, model=self.model, stream=stream, tools=tools) if tools !=None else self.get_chat_response_no_tool_use(messages=messages, model=self.model, stream=stream)
         return chat_response.choices[0].message if return_message else chat_response.choices[0].message.content        
 
     def __call__(self, **kwargs):
@@ -89,8 +81,25 @@ class QuickAzureOpenAIClient():
         _ = Environ().azure_openai(self.version)
         self.model = os.getenv("azure_deployment")
     
+    @retry(allowed_exceptions=(RateLimitError,))
+    def get_chat_response_no_tool_use(self, messages, model, stream):
+        return self.client.with_options(max_retries=0).chat.completions.create(
+                        messages=messages,
+                        model=self.model,
+                        stream=stream)
 
-    def chat_completions_create(self, query:Optional[str]=None, messages:Optional[List[Dict]]=None, tools:Optional[List]=None, return_message=True, stream=False, max_retries=0):
+    @retry(allowed_exceptions=(RateLimitError,))
+    def get_chat_response_tool_use(self, messages, model, stream, tools):
+        return self.client.with_options(max_retries=0).chat.completions.create(
+                        messages=messages,
+                        model=self.model,
+                        stream=stream,
+                        tools = tools,
+                        tool_choice = 'auto')
+
+
+
+    def chat_completions_create(self, query:Optional[str]=None, messages:Optional[List[Dict]]=None, tools:Optional[List]=None, return_message=True, stream=False):
         if messages != None:
             messages = messages
         else:
@@ -99,33 +108,7 @@ class QuickAzureOpenAIClient():
             else:
                 raise ValueError("Pass in either query or messages")
         self.reload_envs()
-
-        # while True:
-            # try:
-        if tools==None:
-            chat_response = self.client.with_options(max_retries=max_retries).chat.completions.create(
-                messages=messages,
-                model=self.model,
-                stream=stream,
-            )    
-        else:
-            chat_response = self.client.with_options(max_retries=max_retries).chat.completions.create(
-                messages=messages,
-                model=self.model,
-                stream=stream,
-                tools = tools,
-                tool_choice = 'auto',
-            )    
-            # except RateLimitError as e:
-            #     try:
-            #         wait_time = int(str(e).split(' Please retry after ')[1].split(' seconds. ')[0])
-            #     except:
-            #         wait_time = 20
-            #     print(f'RateLimitError -----> Will automatically retry {wait_time} seconds later.')     
-            #     for s in range(wait_time, 0, -1):
-            #         print(s, end=' ')
-            #         time.sleep(1)
-
+        chat_response = self.get_chat_response_tool_use(messages=messages, model=self.model, stream=stream, tools=tools) if tools !=None else self.get_chat_response_no_tool_use(messages=messages, model=self.model, stream=stream)
         return chat_response.choices[0].message if return_message else chat_response.choices[0].message.content     
 
     def __call__(self, **kwargs):

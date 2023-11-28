@@ -7,6 +7,7 @@ from langchain.schema.agent import AgentAction, AgentFinish
 from typing import Literal
 from datetime import datetime
 import pytz
+from utils.wrappers import retry
 
 class ReflexionReActAgent(ReActAgent):
     def __init__(self, 
@@ -58,6 +59,7 @@ class ReflexionReActAgent(ReActAgent):
 
 
     ''' Trigger Brain (agent chain) : OVERRIDE '''
+    @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,

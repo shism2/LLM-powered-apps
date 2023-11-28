@@ -6,6 +6,7 @@ from langchain.schema.agent import AgentAction, AgentFinish
 from typing import Literal
 from datetime import datetime
 import pytz
+from utils.wrappers import retry
 
 class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
     def __init__(self, 
@@ -55,6 +56,7 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
 
     ''' OVERRIDE '''
+    @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,
