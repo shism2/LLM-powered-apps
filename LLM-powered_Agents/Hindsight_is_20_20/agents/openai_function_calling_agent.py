@@ -50,14 +50,14 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
         prompt = ChatPromptTemplate.from_messages([
                 self.base_system_prompt,
                 self.base_human_prompt,
-                MessagesPlaceholder(variable_name="agent_scratchpad"), 
+                MessagesPlaceholder(variable_name="agent_scratchpad"), # List of messages
             ])
         return prompt
 
     @property
     def brain(self)-> RunnableSequence:        
         return  (
-            RunnablePassthrough.assign(agent_scratchpad = lambda x : format_to_openai_function_messages(x['intermediate_steps']))
+            RunnablePassthrough.assign(agent_scratchpad = lambda x : format_to_openai_function_messages(x['intermediate_steps'])) # Get a list of messages
             | self.prompt 
             | self.reasoninig_engine.bind(functions=self.openai_functions)
             | MyAIMessageToAgentActionParser(tools=self.schemas)
@@ -67,7 +67,7 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
 
     def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
-        return AgentAction(
+        return AgentActionMessageLog(
                 log=log,
                 tool='',
                 tool_input='',

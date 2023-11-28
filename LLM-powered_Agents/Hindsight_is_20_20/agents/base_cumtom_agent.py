@@ -12,7 +12,7 @@ from langchain.agents.format_scratchpad.log import format_log_to_str
 from langchain import hub
 from langchain.tools.render import render_text_description_and_args
 from loggers.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
-from openai.error import RateLimitError
+from openai import RateLimitError
 import time
 from utils.wrappers import retry_rate_limit_error
 

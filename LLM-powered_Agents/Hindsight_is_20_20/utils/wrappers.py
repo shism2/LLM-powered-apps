@@ -1,5 +1,5 @@
 import time
-from openai.error import RateLimitError
+from openai import RateLimitError
 
 def retry_rate_limit_error(original_func):
     def wrapper(*args, **kwargs):

@@ -56,7 +56,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         prompt = ChatPromptTemplate.from_messages([
                 self.base_system_prompt,
                 self.base_human_prompt,
-                MessagesPlaceholder(variable_name="agent_scratchpad"), 
+                # MessagesPlaceholder(variable_name="agent_scratchpad"), 
             ])
         return prompt
 
@@ -65,14 +65,15 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         return  (
             RunnablePassthrough.assign(agent_scratchpad = lambda x : format_to_openai_function_messages(x['intermediate_steps']))
             | self.prompt 
-            | self.reasoninig_engine.bind(tools=self.function_descriptions, tool_choice='auto')
-            | self.parser
+            # | self.reasoninig_engine.bind(tools=self.function_descriptions, tool_choice='auto')
+            | self.reasoninig_engine
+            # | self.parser
         )
 
 
     def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
-        return AgentAction(
+        return AgentActionMessageLog(
                 log=log,
                 tool='',
                 tool_input='',

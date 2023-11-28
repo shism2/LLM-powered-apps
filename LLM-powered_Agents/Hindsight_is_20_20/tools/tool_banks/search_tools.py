@@ -8,7 +8,7 @@ from typing import Type, Optional
 from pydantic import BaseModel, Field
 from langchain.retrievers.you import YouRetriever
 from langchain.chains import RetrievalQA
-from reasoning_engines.langchain_llm_wrappers import AzureChatOpenAIWrapper
+from reasoning_engines.langchain_llm_wrappers import QuickAzureChatOpenAI
 
 # for robustness
 def get_query_from_string(s):  
@@ -31,9 +31,9 @@ class MyRetrievalQA(RetrievalQA):
     def arun(self, query: str)-> str:
         return super().arun(get_query_from_string(query)) 
 
-def ydc_qa_chain(chain_type='stuff', llm: Optional=None)-> RetrievalQA:
+def ydc_qa_chain(azure_gpt_version:str, chain_type='stuff', llm: Optional=None)-> RetrievalQA:
     yr = YouRetriever()
-    llm = llm or AzureChatOpenAIWrapper()
+    llm = llm or QuickAzureChatOpenAI(version=azure_gpt_version)
     RetrievalQA_chain = MyRetrievalQA.from_chain_type(llm=llm, chain_type=chain_type, retriever=yr)
     return RetrievalQA_chain
 
@@ -48,10 +48,10 @@ class YDCSearchTool:
     description="Get Google-search results"
     args_schema : Type[YDCSearch] = YDCSearch
     
-    def __init__(self, chain_type: str='stuff', llm: Optional=None):
+    def __init__(self, azure_gpt_version:str, chain_type: str='stuff', llm: Optional=None):
         self.chain_type = chain_type
         self.llm = llm
-        self.qa_chain = ydc_qa_chain(chain_type=self.chain_type, llm=self.llm)
+        self.qa_chain = ydc_qa_chain(azure_gpt_version=azure_gpt_version, chain_type=self.chain_type, llm=self.llm)
 
     def run(self, query: str)-> str:
         return self.qa_chain(query)['result']
@@ -63,5 +63,5 @@ class YDCSearchTool:
         result = await self.get_search_result(query)
         return result
 
-def get_YDCSearch_schema_and_tool(chain_type='stuff', llm: Optional=None):
-    return YDCSearch, YDCSearchTool(chain_type=chain_type, llm=llm)
+def get_YDCSearch_schema_and_tool(azure_gpt_version:str, chain_type='stuff', llm: Optional=None):
+    return YDCSearch, YDCSearchTool(azure_gpt_version=azure_gpt_version, chain_type=chain_type, llm=llm)

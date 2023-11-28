@@ -1,11 +1,11 @@
 from langchain.evaluation import load_evaluator
 from typing import Optional
 from utils.wrappers import retry_rate_limit_error
-from reasoning_engines.langchain_llm_wrappers import AzureChatOpenAIWrapper
+from reasoning_engines.langchain_llm_wrappers import QuickAzureChatOpenAI
 
 class CustomQAEvaluator:
     def __init__(self, llm: Optional=None):
-        self.llm = llm or AzureChatOpenAIWrapper()
+        self.llm = llm or QuickAzureChatOpenAI()
         self.evaluator_type = 'qa'
         self.evaluator = load_evaluator(evaluator=self.evaluator_type, llm=self.llm)
 
