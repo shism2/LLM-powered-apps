@@ -7,6 +7,7 @@ from typing import Literal
 from datetime import datetime
 import pytz
 from utils.wrappers import retry
+from openai import RateLimitError 
 
 class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
     def __init__(self, 

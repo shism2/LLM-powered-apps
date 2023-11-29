@@ -63,9 +63,9 @@ class BaseCustomAgent:
 
 
         ### Induced attributes
-        self.schemas = [schema for schema, tool in self.schemas_and_tools]
-        self.tools = [tool for schema, tool in self.schemas_and_tools]
-        self.tool_dictionary = {schema.__name__:tool for schema, tool in self.schemas_and_tools}
+        self.schemas = self.schemas_and_tools.schemas()
+        self.tools = self.schemas_and_tools.tools()
+        self.tool_dictionary = self.schemas_and_tools.tool_dictionary()
         self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_e2e' )
         self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_trajectory' )
         self.console_logger = get_hd22_stream_logger(logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_console')
@@ -141,15 +141,6 @@ class BaseCustomAgent:
         words = sentence.lower().split()    
         return word.lower() in words  
 
-    def sleep(self, e):
-        try:
-            wait_time = int(str(e).split(' Please retry after ')[1].split(' seconds. ')[0])
-        except:
-            wait_time = self.retry_standby
-        print(f'RateLimitError -----> Will automatically retry {wait_time} seconds later.')     
-        for s in range(wait_time, 0, -1):
-            print(s, end=' ')
-            time.sleep(1)
 
 
     ####################### Simulation methods #######################
@@ -159,15 +150,7 @@ class BaseCustomAgent:
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
         """
         self._before_agent_step()        
-        # try: 
-        #     FALG = True
-        #     while FALG:
-        #         try:
-        #             agent_action = self._invoke_agent_action(query)
-        #             FALG = False
-        #         except RateLimitError as e:
-        #             self.sleep(e)            
-        #     Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
+
         
         try: 
             agent_action = self._invoke_agent_action(query)        
@@ -286,13 +269,6 @@ class BaseCustomAgent:
     @retry(allowed_exceptions=(RateLimitError,))
     def _get_function_observation(self, tool, tool_input):
         return self.tool_dictionary[tool].run(**tool_input)
-
-    # def _invoke_agent_action(self, query):
-    #     ''' Override this property for any child class  IF NECESSARY'''
-    #     return self.brain.invoke({
-    #             'intermediate_steps': self.intermediate_steps,
-    #             'input': query,
-    #         })
 
     @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):

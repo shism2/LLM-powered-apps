@@ -6,14 +6,17 @@ from langchain.agents import Tool
 def get_tool_list(config: Optional[Configurations]=None, return_tool_dictionary: bool = False)-> List[Tool]:
         if config == None:
                 config = Configurations()
-        search_tool = web_search_tools.get_web_search_tools(config)
+        # search_tool = web_search_tools.get_web_search_tools(config)
         weather_tool = weather_tools.GetFromOpenWeatherMap()
-        math_tool = math_tools.GetFromWolfram()
+        # math_tool = math_tools.GetFromWolfram()
         time_tool = time_tools.GetFromDatetimeModule()
         python_repl_tool = python_repl_tools.GetLangChainPythonRepl()
 
+        # tools = [
+        #         search_tool, weather_tool, math_tool, time_tool, python_repl_tool
+        # ]
         tools = [
-                search_tool, weather_tool, math_tool, time_tool, python_repl_tool
+                weather_tool, time_tool, python_repl_tool
         ]
         # tools = [
         #         search_tool, weather_tool, time_tool, python_repl_tool
