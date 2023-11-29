@@ -1,6 +1,7 @@
 import time
 from openai import RateLimitError
 from functools import wraps
+from typing import Optional
 
 # def retry_rate_limit_error(original_func):
 #     def wrapper(*args, **kwargs):
@@ -26,7 +27,7 @@ def get_waiting_time(e):
         wait_time = 20
     return wait_time
 
-def retry(allowed_exceptions=(Exception,)):
+def retry(allowed_exceptions=(Exception,), return_message: bool=False):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -40,6 +41,13 @@ def retry(allowed_exceptions=(Exception,)):
                     for s in range(wait_time, 0, -1):
                         print(s, end=' ')
                         time.sleep(1)
+                except Exception as e:
+                    if return_message:
+                        raise Exception(e)
+                    else:
+                        raise Exception
+
+
         return wrapper
     return decorator
 

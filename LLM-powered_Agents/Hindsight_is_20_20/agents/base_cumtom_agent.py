@@ -293,7 +293,7 @@ class BaseCustomAgent:
 
 
     def _is_halted(self, timestep:int)-> bool:
-        return self.timestep>self.horizon-2 and not isinstance(self.a, AgentFinish)
+        return self.timestep>self.horizon-1
 
 
     def _parsing_action_argument_value(self, value):

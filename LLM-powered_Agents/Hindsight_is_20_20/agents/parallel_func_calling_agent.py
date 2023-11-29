@@ -95,9 +95,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         
         while not self.done:
             self.timestep += 1
-            self.a, self.s_prime, done  = self.agent_step(query)   
-            # if not done:  
-            #     self.intermediate_steps.append((self.a, self.s_prime))            
+            self.a, self.s_prime, done  = self.agent_step(query)       
             self.done = True if (done) or (self._is_halted(self.timestep)) else False
 
         # assessment the output
@@ -107,6 +105,10 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.prediction = "HALTED"
         self.judgement = self._assessment()
         self._add_judgement_to_agent_log()
+
+
+    def _is_halted(self, timestep:int)-> bool:
+        return self.timestep>self.horizon-1 and not isinstance(self.a, AgentFinish)
 
 
 
@@ -134,16 +136,15 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         done = True if Observation[:8]=='Answer: ' else False 
         return agent_action, Observation, done       
 
-    @retry(allowed_exceptions=(RateLimitError,))
+    @retry(allowed_exceptions=(RateLimitError,), return_message=True)
     def _get_function_observation(self, tool, tool_input):
-        try:
-            result = str(self.tool_dictionary[tool].run(**tool_input))
-            return result
-        except RateLimitError:
-            raise RateLimitError
-        except Exception as e:
-            return f"Unexpected Exception has been raised. The error message is {e}."
+        return self.tool_dictionary[tool].run(**tool_input)
 
+    # def _get_function_observation_2_(self, tool, tool_input):
+    #     try:
+    #         return self._get_function_observation(tool, tool_input)
+    #     except Exception as e:
+    #         return f"Unexpected Exception has been raised. The error message is {e}."
 
     def _func_execution(self, agent_action)-> Tuple[str,str]:
         '''
@@ -164,7 +165,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
                 observations = [(tool_call.id, tool_call.function.name, f"Unexpected Exception has been raised. The error message is {e}.") for tool_call in tool_calls]
             tool_messages = self.parsing_to_tool_msg_dict_parser(observations)
             self.messages += tool_messages
-            Observation = f"Results in parallel (step {self.timestep+1}): [" + ', '.join( [f'Tool {i+1}-> '+x['content'] for i, x in enumerate(tool_messages)]  ) + ']'
+            Observation = f"(step {self.timestep+1}-2) Results in parallel: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
         else:
             Observation = f"Answer: {agent_action['content']}"
         Observation_loglevel = 'info'
@@ -177,10 +178,10 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
     def _func_execution_for_exception(self, e: Optional[str]=None) :              
-        Action = f'{self.action_word[:-1]} (step {self.timestep+1}): Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
+        Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
         self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))    
         
-        Observation = f"Results in parallel (step {self.timestep+1}): Could not get any tool-invocation results because of the unexpected Exception."
+        Observation = f"(step {self.timestep+1}-2) Results in parallel: Could not get any tool-invocation results because of the unexpected Exception."
         self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))    
 
         return Observation, Action+'\n'+Observation+'\n' 
@@ -200,7 +201,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             Action = self._parsing_action_into_str(tool_calls)
             Action_loglevel = 'info'
         except Exception as e:
-            Action = f'{self.action_word[:-1]} (step {self.timestep+1}): Failed to parse Action into str. The error message is "{e}".'
+            Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Failed to parse Action into str. The error message is "{e}".'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
 
         return '', Action 
@@ -219,9 +220,9 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             if tool_calls:
                 tools_and_args = [ {'name':tool_call.function.name, 'args':json.loads(tool_call.function.arguments)} for tool_call in tool_calls]
                 results = [ self.__parse_into_func_name_args__(item['name'], **item['args']) for item in tools_and_args ]  
-                Action = f'{self.action_word[:-1]} (step {self.timestep+1}): [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
+                Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
             else:
-                Action = f'{self.action_word[:-1]} (step {self.timestep+1}): Now I can answer directly without resorting to any tool.'
+                Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Now I can answer directly without resorting to any tool.'
 
             return Action
         except Exception as e:
