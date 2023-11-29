@@ -69,6 +69,7 @@ class BaseCustomAgent:
         self.e2e_logger = get_hd22_file_logger(log_file= os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_e2e' )
         self.trajectory_logger = get_hd22_file_logger(log_file= os.path.join(self.trajectory_only_log_folder, self.get_logger_name_prefix()+'_trajectory.log'), logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_trajectory' )
         self.console_logger = get_hd22_stream_logger(logger_name=self.get_logger_name_prefix()+str(datetime.now())+'_console')
+        self.messages = [] # For chat-completion api use
 
 
 

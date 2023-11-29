@@ -7,12 +7,13 @@ from openai import RateLimitError
 from utils.wrappers import retry
 
 
-def QuickAzureChatOpenAI(version:str, max_retries:int=0, model_kwargs:Dict={}, **kwargs):
+def QuickAzureChatOpenAI(version:str, max_retries:int=0, temperature=0.0, model_kwargs:Dict={}, **kwargs):
     _ = Environ().azure_openai(version)
     llm = AzureChatOpenAI(
         azure_deployment=os.getenv('azure_deployment'), 
         model_name=os.getenv('model_name'),
         max_retries = max_retries,
+        temperature = temperature,
         model_kwargs = model_kwargs,
         **kwargs
         )    
