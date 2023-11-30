@@ -135,9 +135,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
 
-
-
-    async def agent_step(self, query: str):
+    async def agent_step_async(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
@@ -145,18 +143,21 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         self._before_agent_step()   
         if not self.use_chat_completion_api:
             raise NotImplementedError
-        else:
+        try:
+            agent_action = await self._invoke_agent_action_async(query)  
+            return agent_action  
+            self.messages.append(agent_action) # This must be here
             try:
-                agent_action = await self._invoke_agent_action_async(query)    
-                self.messages.append(agent_action) # This must be here
-                try:
-                    Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
-                except Exception as e:
-                    print(f"agent_action is normal, but tool execution failed : {e}")
+                Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
             except Exception as e:
-                agent_action = self._invoke_agent_action_for_exception_async(e)
-                self.messages.append(agent_action) # This must be here
-                Observation, temp_scratchpad = self._func_execution_for_exception(e)
+                _, Action = await self._parsing_Thought_and_Action_into_str_async(agent_action['tool_calls'])
+                Observation = f'(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception. The error message is "{e}".'
+                temp_scratchpad = Action+'\n'+Observation+'\n'
+        except Exception as e:
+            agent_action = await self._invoke_agent_action_for_exception_async(e)
+            self.messages.append(agent_action) # This must be here
+            Observation, temp_scratchpad = await self._func_execution_for_exception_async(e)
+        
         self.agent_log += temp_scratchpad
         done = True if Observation[:8]=='Answer: ' else False 
         return agent_action, Observation, done       
@@ -170,75 +171,82 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         invocation_result = await self.tool_dictionary[tool].arun(**tool_input)
         return invocation_result
 
+    #### _func_execution #### 
+    # def _func_execution(self, agent_action)-> Tuple[str,str]:
+    #     '''
+    #     In the Reinforcement-learning context, '_func_execution' method is reponsible for producing 'next state (s_prime)'.
+    #     Here 'Obserbation' acts as 's_prime'. It additionally return the log string (Thought_Action+'\n'+Observation+'\n').  
+    #     '''
+    #     if not self.use_chat_completion_api:
+    #         raise NotImplementedError
 
-    def _func_execution(self, agent_action)-> Tuple[str,str]:
-        '''
-        In the Reinforcement-learning context, '_func_execution' method is reponsible for producing 'next state (s_prime)'.
-        Here 'Obserbation' acts as 's_prime'. It additionally return the log string (Thought_Action+'\n'+Observation+'\n').  
-        '''
-        if not self.use_chat_completion_api:
-            raise NotImplementedError
+    #     tool_calls = agent_action['tool_calls']
+    #     Observation_loglevel = 'error'
+    #     Thought, Action = self._parsing_Thought_and_Action_into_str(tool_calls)        
+    #     Thought_Action = Thought+'\n'+Action if Thought != '' else Action
+    #     if tool_calls:
+    #         # try:
+    #         observations = [(tool_call.id, tool_call.function.name, self._get_function_observation(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]
+    #         are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
+    #         if not are_all_excpetion:
+    #             Observation_loglevel = 'info'
+    #         tool_messages = self.parsing_to_tool_msg_dict_parser(observations)
+    #         self.messages += tool_messages
+    #         Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
+    #     else:
+    #         Observation_loglevel = 'info'
+    #         Observation = f"Answer: {(agent_action['content']).strip()}" 
 
-        tool_calls = agent_action['tool_calls']
-        Observation_loglevel = 'error'
-        Thought, Action = self._parsing_Thought_and_Action_into_str(tool_calls)        
-        Thought_Action = Thought+'\n'+Action if Thought != '' else Action
-        if tool_calls:
-            # try:
-            observations = [(tool_call.id, tool_call.function.name, self._get_function_observation(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]
-            are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
-            if not are_all_excpetion:
-                Observation_loglevel = 'info'
-            tool_messages = self.parsing_to_tool_msg_dict_parser(observations)
-            self.messages += tool_messages
-            Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
-        else:
-            Observation_loglevel = 'info'
-            Observation = f"Answer: {(agent_action['content']).strip()}" 
-
-        self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
-        return Observation, Thought_Action+'\n'+Observation+'\n'
+    #     self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
+    #     return Observation, Thought_Action+'\n'+Observation+'\n'
 
 
 
     async def _func_execution_async(self, agent_action)-> Tuple[str,str]:
-        ''' Acyns version of get_value_acync() '''
         if not self.use_chat_completion_api:
             raise NotImplementedError
 
         tool_calls = agent_action['tool_calls']
         Observation_loglevel = 'error'
-        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)   ## IMPLEMENT THIS     
+        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)   
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
         if tool_calls:
             # try:
-            observations = asyncio.gather(*[(tool_call.id, tool_call.function.name, self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]) 
-            are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
-            if not are_all_excpetion:
+            observations = await asyncio.gather(*[(tool_call.id, tool_call.function.name, self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]) 
+            are_all_tools_excpetion = await self.are_all_tools_excpetion(observations)
+            if not are_all_tools_excpetion:
                 Observation_loglevel = 'info'
-            tool_messages = self.parsing_to_tool_msg_dict_parser_async(observations)   ## IMPLEMENT THIS    
+            tool_messages = await self.parsing_to_tool_msg_dict_parser(observations)     
             self.messages += tool_messages
             Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
         else:
             Observation_loglevel = 'info'
             Observation = f"Answer: {(agent_action['content']).strip()}" 
 
-        self.collect_logs_async(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))  ## IMPLEMENT THIS    
+        self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))  
         return Observation, Thought_Action+'\n'+Observation+'\n'
 
+    async def are_all_tools_excpetion(self, observations):
+        return sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
 
 
     #### _func_execution_for_exception #### 
-    async def _func_execution_for_exception_a(self, e: Optional[str]=None) :              
+    def _func_execution_for_exception(self, e: Optional[str]=None) :              
         Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
         self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
         Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception."
         self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))
         return Observation, Action+'\n'+Observation+'\n'
+    
+    async def _func_execution_for_exception_a(self, e: Optional[str]=None) :      
+        return self._func_execution_for_exception(e)
 
     async def _func_execution_for_exception_async(self, e: Optional[str]=None) :    
         Observation, temp_scratchpad = await self._func_execution_for_exception_a(e)
         return Observation, temp_scratchpad 
+
+
+
 
 
     def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
@@ -258,7 +266,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
-
+    #### _parsing_Thought_and_Action_into_str #### 
     def _parsing_Thought_and_Action_into_str(self, tool_calls:str)-> Tuple[str, str]:
         Action_loglevel = 'error'
         try:    
@@ -267,19 +275,21 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         except Exception as e:
             Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Failed to parse Action into str. The error message is "{e}".'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
+        return '', Action 
 
+    async def _parsing_Thought_and_Action_into_str_a(self, tool_calls:str)-> Tuple[str, str]:   
+        return self._parsing_Thought_and_Action_into_str(tool_calls)
+    
+    async def _parsing_Thought_and_Action_into_str_async(self, tool_calls:str)-> Tuple[str, str]:
+        Action = await self._parsing_Thought_and_Action_into_str_a(tool_calls)
         return '', Action 
 
 
-    def __parse_into_func_name_args__(self, name, **kwargs):
-        args_list = ', '.join([f"{key}={value}" for key, value in kwargs.items()])  
-        return f"{name}({args_list})"          
 
-
+    #### _parsing_action_into_str #### 
     def _parsing_action_into_str(self, tool_calls:List[Dict])-> str:
         if not self.use_chat_completion_api:
             raise NotImplementedError
-
         try:
             if tool_calls:
                 tools_and_args = [ {'name':tool_call.function.name, 'args':json.loads(tool_call.function.arguments)} for tool_call in tool_calls]
@@ -287,7 +297,19 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
                 Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
             else:
                 Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Now I can answer directly without resorting to any tool.'
-
             return Action
         except Exception as e:
             raise Exception(e)
+        
+    # async def _parsing_action_into_str_a(self, tool_calls:List[Dict])-> str:
+    #     return self._parsing_action_into_str(tool_calls)
+
+    # async def _parsing_action_into_str_async(self, tool_calls:List[Dict])-> str:
+    #     if not self.use_chat_completion_api:
+    #         raise NotImplementedError
+    #     Action = await self._parsing_action_into_str_a(tool_calls)
+    #     return Action
+
+    def __parse_into_func_name_args__(self, name, **kwargs):
+        args_list = ', '.join([f"{key}={value}" for key, value in kwargs.items()])  
+        return f"{name}({args_list})"          
