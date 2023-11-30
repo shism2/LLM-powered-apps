@@ -14,19 +14,26 @@ from utils.wrappers import retry
 from openai import RateLimitError
 from langchain.adapters.openai import convert_message_to_dict
 from langchain_core.runnables import RunnableLambda
+from reasoning_engines.langchain_llm_wrappers import AsyncQuickAzureOpenAIClient
+import asyncio
 
 
-def parsing_to_ai_msg_dict(chat_completion_msg):
+async def parsing_to_ai_msg_dict_a(chat_completion_msg):
     ai_msg_dict = {
-        'role':'assistant',
-        'content': chat_completion_msg.content,
-        'tool_calls' : chat_completion_msg.tool_calls
+        'role':'assistant', 'content': chat_completion_msg.content, 'tool_calls' : chat_completion_msg.tool_calls
     }
     return ai_msg_dict
 
+async def parsing_to_ai_msg_dict_async(chat_completion_msg):
+    ai_msg_dict = await parsing_to_ai_msg_dict_a(chat_completion_msg)
+    return ai_msg_dict
 
-def parsing_to_tool_msg_dict(tool_responses: List)-> List:
+async def parsing_to_tool_msg_dict_a(tool_responses: List)-> List:
     result =   [{'role':'tool', 'name':tool_response[1], 'tool_call_id':tool_response[0], 'content':tool_response[2]} for tool_response in tool_responses]
+    return result
+
+async def parsing_to_tool_msg_dict_async(tool_responses: List)-> List:
+    result =  await parsing_to_tool_msg_dict_a(tool_responses=tool_responses) 
     return result
 
 
@@ -50,41 +57,53 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         super().__init__(**kwargs)
         self.openai_functions = [convert_pydantic_to_openai_tool(x) for x in self.schemas]
         self.azure_apenai_client = azure_apenai_client
+        if not isinstance(self.azure_apenai_client, AsyncQuickAzureOpenAIClient):
+            self.collect_logs("You passed in a synchronous Azure client. It is recommended you use an Async client.", (True, 'error'), (False, 'error'), (False, 'error'))
+            raise Exception
         
         if self.use_chat_completion_api: 
             if self.azure_apenai_client==None:
                 raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")            
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
-            self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict
-            self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict
+            self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict_async
+            self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict_async
 
      
-        
+    ### _invoke_agent_action ###    
+    # @retry(allowed_exceptions=(RateLimitError,))
+    # def _invoke_agent_action(self, query):
+    #     if not self.use_chat_completion_api:
+    #         raise NotImplementedError
+    #     else:         
+    #         self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}   
+    #         chat_response = self.parsing_to_ai_msg_dict_parser(
+    #                     self.azure_apenai_client.chat_completions_create(
+    #                     messages=self.messages, 
+    #                     tools=self.openai_functions)
+    #                 )
+    #         return chat_response
+
     @retry(allowed_exceptions=(RateLimitError,))
-    def _invoke_agent_action(self, query):
+    async def _invoke_agent_action_async(self, query):
         if not self.use_chat_completion_api:
             raise NotImplementedError
         else:         
             self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}   
-            return self.parsing_to_ai_msg_dict_parser(
-                        self.azure_apenai_client.chat_completions_create(
-                        messages=self.messages, 
-                        tools=self.openai_functions
-                        )
-                    )
+            chat_response = await self.azure_apenai_client.chat_completions_create(
+                                        messages=self.messages, 
+                                        tools=self.openai_functions)
+            chat_response = await self.parsing_to_ai_msg_dict_parser(chat_response)                            
+            return chat_response 
 
-
-    def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
+    ### _invoke_agent_action_for_exception ### 
+    async def _invoke_agent_action_for_exception_async(self, e: Optional[str]=None):
         if not self.use_chat_completion_api:
             raise NotImplementedError
-        else:      
+        else: 
             log = f'Unexpected Exception has been raised. The error message is "{e}"' if e != None else 'Unexpected Exception has been raised.'
-            return {
-                'role': 'assistant',
-                'content' : log,
-                'tool_calls' : None         
-            }
+            return {'role': 'assistant', 'content' : log, 'tool_calls' : None}
+
 
 
     def run_agent_episode(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
@@ -118,7 +137,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
 
-    def agent_step(self, query: str):
+    async def agent_step(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
@@ -128,14 +147,14 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             raise NotImplementedError
         else:
             try:
-                agent_action = self._invoke_agent_action(query)    
+                agent_action = await self._invoke_agent_action_async(query)    
                 self.messages.append(agent_action) # This must be here
                 try:
                     Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
                 except Exception as e:
                     print(f"agent_action is normal, but tool execution failed : {e}")
             except Exception as e:
-                agent_action = self._invoke_agent_action_for_exception(e)
+                agent_action = self._invoke_agent_action_for_exception_async(e)
                 self.messages.append(agent_action) # This must be here
                 Observation, temp_scratchpad = self._func_execution_for_exception(e)
         self.agent_log += temp_scratchpad
@@ -145,6 +164,11 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
     @retry(allowed_exceptions=(RateLimitError,), return_message="Unexpected Exception has been raised.")
     def _get_function_observation(self, tool, tool_input):
         return self.tool_dictionary[tool].run(**tool_input)
+
+    @retry(allowed_exceptions=(RateLimitError,), return_message="Unexpected Exception has been raised.")
+    async def _get_function_observation_async(self, tool, tool_input):
+        invocation_result = await self.tool_dictionary[tool].arun(**tool_input)
+        return invocation_result
 
 
     def _func_execution(self, agent_action)-> Tuple[str,str]:
@@ -170,24 +194,51 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
         else:
             Observation_loglevel = 'info'
-            Observation = f"Answer: {(agent_action['content']).strip()}"
-        
-
-
+            Observation = f"Answer: {(agent_action['content']).strip()}" 
 
         self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
         return Observation, Thought_Action+'\n'+Observation+'\n'
 
 
 
-    def _func_execution_for_exception(self, e: Optional[str]=None) :              
-        Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
-        self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))    
-        
-        Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception."
-        self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))    
+    async def _func_execution_async(self, agent_action)-> Tuple[str,str]:
+        ''' Acyns version of get_value_acync() '''
+        if not self.use_chat_completion_api:
+            raise NotImplementedError
 
-        return Observation, Action+'\n'+Observation+'\n' 
+        tool_calls = agent_action['tool_calls']
+        Observation_loglevel = 'error'
+        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)   ## IMPLEMENT THIS     
+        Thought_Action = Thought+'\n'+Action if Thought != '' else Action
+        if tool_calls:
+            # try:
+            observations = asyncio.gather(*[(tool_call.id, tool_call.function.name, self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]) 
+            are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
+            if not are_all_excpetion:
+                Observation_loglevel = 'info'
+            tool_messages = self.parsing_to_tool_msg_dict_parser_async(observations)   ## IMPLEMENT THIS    
+            self.messages += tool_messages
+            Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
+        else:
+            Observation_loglevel = 'info'
+            Observation = f"Answer: {(agent_action['content']).strip()}" 
+
+        self.collect_logs_async(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))  ## IMPLEMENT THIS    
+        return Observation, Thought_Action+'\n'+Observation+'\n'
+
+
+
+    #### _func_execution_for_exception #### 
+    async def _func_execution_for_exception_a(self, e: Optional[str]=None) :              
+        Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
+        self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
+        Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception."
+        self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))
+        return Observation, Action+'\n'+Observation+'\n'
+
+    async def _func_execution_for_exception_async(self, e: Optional[str]=None) :    
+        Observation, temp_scratchpad = await self._func_execution_for_exception_a(e)
+        return Observation, temp_scratchpad 
 
 
     def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
