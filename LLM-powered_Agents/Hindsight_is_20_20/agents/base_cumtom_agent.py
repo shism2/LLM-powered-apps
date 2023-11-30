@@ -108,11 +108,9 @@ class BaseCustomAgent:
         self.a = None
         self.s_prime = ''
 
-
         # agent_reset
         self._before_agent_episode()
         self._before_agent_trials(reference='Instance initialization')
-
 
 
 

@@ -53,9 +53,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         
         if self.use_chat_completion_api: 
             if self.azure_apenai_client==None:
-                raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")            
-            self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
-            self.messages.append({'role':'user', 'content':''})
+                raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")
             self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict
             self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict
 
