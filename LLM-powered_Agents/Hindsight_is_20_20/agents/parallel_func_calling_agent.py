@@ -32,10 +32,23 @@ def parsing_to_tool_msg_dict(tool_responses: List)-> List:
 
 
 class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
-    def __init__(self, use_chat_completion_api:bool=False, azure_apenai_client: Optional=None, **kwargs):
+    @property
+    def is_reflexion_agent(self):
+        return False
+
+    @property
+    def prompt(self)-> ChatPromptTemplate:
+        raise NotImplementedError  
+
+    @property
+    def brain(self)-> RunnableSequence:  
+        raise NotImplementedError 
+
+
+    def __init__(self, use_chat_completion_api:bool=False, azure_apenai_client: Optional=None, **kwargs):        
+        self.use_chat_completion_api = use_chat_completion_api
         super().__init__(**kwargs)
         self.openai_functions = [convert_pydantic_to_openai_tool(x) for x in self.schemas]
-        self.use_chat_completion_api = use_chat_completion_api
         self.azure_apenai_client = azure_apenai_client
         
         if self.use_chat_completion_api: 
@@ -46,14 +59,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict
             self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict
 
-
-    @property
-    def prompt(self)-> ChatPromptTemplate:
-        raise NotImplementedError  
-
-    @property
-    def brain(self)-> RunnableSequence:  
-        raise NotImplementedError      
+     
         
     @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):
@@ -61,8 +67,6 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             raise NotImplementedError
         else:         
             self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}   
-            # print(f"Size of messages: {len(self.messages)}")
-            # print(self.messages)
             return self.parsing_to_ai_msg_dict_parser(
                         self.azure_apenai_client.chat_completions_create(
                         messages=self.messages, 
@@ -94,9 +98,13 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.collect_logs(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.timestep += 1
-            self.a, self.s_prime, done  = self.agent_step(query)       
-            self.done = True if (done) or (self._is_halted(self.timestep)) else False
+            self.a, self.s_prime, self.is_termination_state  = self.agent_step(query)       
+            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
+
+
+            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
+            if not self.done:
+                self.timestep += 1
 
         # assessment the output
         if not self._is_halted(self.timestep):
@@ -107,8 +115,6 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         self._add_judgement_to_agent_log()
 
 
-    def _is_halted(self, timestep:int)-> bool:
-        return self.timestep>self.horizon-1 and not isinstance(self.a, AgentFinish)
 
 
 
@@ -122,7 +128,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             raise NotImplementedError
         else:
             try:
-                agent_action = self._invoke_agent_action(query)     
+                agent_action = self._invoke_agent_action(query)    
                 self.messages.append(agent_action) # This must be here
                 try:
                     Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
@@ -136,15 +142,10 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         done = True if Observation[:8]=='Answer: ' else False 
         return agent_action, Observation, done       
 
-    @retry(allowed_exceptions=(RateLimitError,), return_message=True)
+    @retry(allowed_exceptions=(RateLimitError,), return_message="Unexpected Exception has been raised.")
     def _get_function_observation(self, tool, tool_input):
         return self.tool_dictionary[tool].run(**tool_input)
 
-    # def _get_function_observation_2_(self, tool, tool_input):
-    #     try:
-    #         return self._get_function_observation(tool, tool_input)
-    #     except Exception as e:
-    #         return f"Unexpected Exception has been raised. The error message is {e}."
 
     def _func_execution(self, agent_action)-> Tuple[str,str]:
         '''
@@ -159,16 +160,18 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         Thought, Action = self._parsing_Thought_and_Action_into_str(tool_calls)        
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
         if tool_calls:
-            try:
-                observations = [(tool_call.id, tool_call.function.name, self._get_function_observation(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]
-            except Exception as e:
-                observations = [(tool_call.id, tool_call.function.name, f"Unexpected Exception has been raised. The error message is {e}.") for tool_call in tool_calls]
+            # try:
+            observations = [(tool_call.id, tool_call.function.name, self._get_function_observation(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]
+            are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
+            if not are_all_excpetion:
+                Observation_loglevel = 'info'
             tool_messages = self.parsing_to_tool_msg_dict_parser(observations)
             self.messages += tool_messages
-            Observation = f"(step {self.timestep+1}-2) Results in parallel: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
+            Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
         else:
-            Observation = f"Answer: {agent_action['content']}"
-        Observation_loglevel = 'info'
+            Observation_loglevel = 'info'
+            Observation = f"Answer: {(agent_action['content']).strip()}"
+        
 
 
 
@@ -178,21 +181,31 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
     def _func_execution_for_exception(self, e: Optional[str]=None) :              
-        Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
+        Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
         self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))    
         
-        Observation = f"(step {self.timestep+1}-2) Results in parallel: Could not get any tool-invocation results because of the unexpected Exception."
+        Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception."
         self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))    
 
         return Observation, Action+'\n'+Observation+'\n' 
 
 
-    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
-        ''' Override this property for any child class IF NECESSARY'''
-        self.trial=0
-        self.judgement = ['', "PENDING"]
-        self.messages = self.messages[:2]
+    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+        super()._before_agent_episode(query=query, reference=reference)
+        if self.use_chat_completion_api:
+            self.messages = []
+            self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
+            self.messages.append({'role':'user', 'content':''})
 
+
+
+
+    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
+        super()._before_agent_trials(query=query, reference=reference)
+        if self.use_chat_completion_api:
+            self.messages = []
+            self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
+            self.messages.append({'role':'user', 'content':''})
 
 
     def _parsing_Thought_and_Action_into_str(self, tool_calls:str)-> Tuple[str, str]:
@@ -220,9 +233,9 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             if tool_calls:
                 tools_and_args = [ {'name':tool_call.function.name, 'args':json.loads(tool_call.function.arguments)} for tool_call in tool_calls]
                 results = [ self.__parse_into_func_name_args__(item['name'], **item['args']) for item in tools_and_args ]  
-                Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
+                Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
             else:
-                Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Now I can answer directly without resorting to any tool.'
+                Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Now I can answer directly without resorting to any tool.'
 
             return Action
         except Exception as e:

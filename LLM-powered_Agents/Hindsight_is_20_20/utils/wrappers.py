@@ -27,7 +27,7 @@ def get_waiting_time(e):
         wait_time = 20
     return wait_time
 
-def retry(allowed_exceptions=(Exception,), return_message: bool=False):
+def retry(allowed_exceptions=(Exception,), return_message: str=''):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -42,8 +42,8 @@ def retry(allowed_exceptions=(Exception,), return_message: bool=False):
                         print(s, end=' ')
                         time.sleep(1)
                 except Exception as e:
-                    if return_message:
-                        raise Exception(e)
+                    if return_message != '':
+                        return return_message+f' The error message if {e}'
                     else:
                         raise Exception
 

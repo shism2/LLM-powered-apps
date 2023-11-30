@@ -15,19 +15,10 @@ from datetime import datetime
 import pytz
 
 class ReActAgent(BaseCustomAgent):
-    def __init__(self, **kwargs):
-            super().__init__(**kwargs)
+    @property
+    def is_reflexion_agent(self):
+        return False
 
-
-    def _tool_description_for_system_msg_(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
-        """adapted from langchain's render_text_description_and_args """
-        tool_strings = []
-        for schema, tool in zip(schemas, tools):
-            tool_strings.append(f"{tool.name}: {tool.description}, args: {str(schema.schema()['properties'])}")
-        return "\n".join(tool_strings)
-
-
-    ''' Base prompt for brain (agent chain) : OVERRIDE'''
     @property
     def base_prompt(self)-> ChatPromptTemplate:
         prompt = ChatPromptTemplate.from_messages([self.base_system_prompt, self.base_human_prompt])
@@ -37,7 +28,7 @@ class ReActAgent(BaseCustomAgent):
             )
         return prompt
 
-    ''' Define brain (agent chain) : OVERRIDE'''
+
     @property
     def brain(self)-> Any:
 
@@ -84,7 +75,21 @@ class ReActAgent(BaseCustomAgent):
             | RunnableLambda(fix_json, afunc=fix_json_async)
             | JSONAgentOutputParser()
         )  
-        return brain      
+        return brain     
+
+
+    def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+
+
+    def _tool_description_for_system_msg_(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
+        """adapted from langchain's render_text_description_and_args """
+        tool_strings = []
+        for schema, tool in zip(schemas, tools):
+            tool_strings.append(f"{tool.name}: {tool.description}, args: {str(schema.schema()['properties'])}")
+        return "\n".join(tool_strings)
+
+ 
 
 
     ''' Define parsing function of intermediate steps : OVERRIDE'''

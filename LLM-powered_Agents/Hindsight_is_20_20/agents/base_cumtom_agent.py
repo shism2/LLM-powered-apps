@@ -21,6 +21,25 @@ from utils.wrappers import retry
 
 
 class BaseCustomAgent:
+    @property
+    def is_reflexion_agent(self):
+        return False
+
+    @property
+    def base_prompt(self)-> ChatPromptTemplate:
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
+    @base_prompt.setter
+    def base_prompt(self, new_prompt: ChatPromptTemplate)-> None:
+        ''' Override this property for any child class '''
+        raise NotImplementedError    
+
+    @property
+    def brain(self)-> Any:
+        ''' Override this property for any child class '''
+        raise NotImplementedError
+
 
     def __init__(self,
                 reasoninig_engine: Any,
@@ -29,6 +48,7 @@ class BaseCustomAgent:
                 evaluator: Any,
                 action_word: str,
                 thought_word: Optional[str]=None, 
+                observation_word: Optional[str]=None, 
                 stop_words: List[str]|None=None,
                 retry_RateLimitError: bool = True,
                 retry_standby = 20,
@@ -51,6 +71,7 @@ class BaseCustomAgent:
         self.evaluator = evaluator
         self.action_word = action_word+':' if (action_word!=None and len(action_word.split(':'))==1) else action_word
         self.thought_word = thought_word+':' if (thought_word!=None and len(thought_word.split(':'))==1) else thought_word
+        self.observation_word = observation_word+':' if (observation_word!=None and len(observation_word.split(':'))==1) else observation_word
         self.retry_RateLimitError = retry_RateLimitError
         self.retry_standby = retry_standby
         self.stop_words = stop_words
@@ -74,9 +95,11 @@ class BaseCustomAgent:
 
 
         ### Intricsic parameters
+        self.timestep = 0
         self.query: str = ''
         self.reference: str = ''
         self.done: bool = False
+        self.is_termination_state: bool = False
         self.prediction: str = ''
         self.judgement: List = ['', 0]
         self.agent_log: str = ''
@@ -99,20 +122,7 @@ class BaseCustomAgent:
         self._before_agent_episode()
         self._before_agent_trials(reference='Instance initialization')
 
-    @property
-    def base_prompt(self)-> ChatPromptTemplate:
-        ''' Override this property for any child class '''
-        raise NotImplementedError
 
-    @base_prompt.setter
-    def base_prompt(self, new_prompt: ChatPromptTemplate)-> None:
-        ''' Override this property for any child class '''
-        raise NotImplementedError    
-
-    @property
-    def brain(self)-> Any:
-        ''' Override this property for any child class '''
-        raise NotImplementedError
 
     def clear_logs(self):
         with open(os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), 'w') as f:
@@ -163,8 +173,8 @@ class BaseCustomAgent:
             Observation, temp_scratchpad = self._func_execution_for_exception(e)
         
         self.agent_log += temp_scratchpad
-        done = True if isinstance(agent_action, AgentFinish) else False 
-        return agent_action, Observation, done       
+        is_termination_state = True if isinstance(agent_action, AgentFinish) else False 
+        return agent_action, Observation, is_termination_state       
 
 
     def run_agent_episode(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
@@ -178,11 +188,14 @@ class BaseCustomAgent:
             self.collect_logs(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.timestep += 1
-            self.a, self.s_prime, done  = self.agent_step(query)   
-            if not done:  
+            self.a, self.s_prime, self.is_termination_state  = self.agent_step(query)   
+            if not self.is_termination_state:  
                 self.intermediate_steps.append((self.a, self.s_prime))            
-            self.done = True if (done) or (self._is_halted(self.timestep)) else False
+            
+            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
+            if not self.done:
+                self.timestep += 1
+
 
         # assessment the output
         if not self._is_halted(self.timestep):
@@ -191,6 +204,11 @@ class BaseCustomAgent:
             self.prediction = "HALTED"
         self.judgement = self._assessment()
         self._add_judgement_to_agent_log()
+
+
+    def _is_halted(self, timestep:int)-> bool:
+        return (self.timestep >= self.horizon-1) and (not self.is_termination_state)
+
 
 
     def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
@@ -252,17 +270,40 @@ class BaseCustomAgent:
         self.reference = reference if reference != None else ''
         self.agent_log = ''
         self.prediction = ''
-        self.timestep = -1
+        self.timestep = 0
         self.done  = False   
+        self.is_termination_state = False
         self.intermediate_steps = []
         self.judgement = ['', "PENDING"]
         self.a = None
         self.s_prime = ''
+        if self.is_reflexion_agent:
+            if self.trial>0:
+                    self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
+                    self._do_reflexion_(self.trajectory_only_log_for_reflexion)
+                    reflexion_loglevel = 'info' if len(self.most_recent_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
+                    self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
+                    self.collect_logs(self.most_recent_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
+
+
+    ''' Reflect '''
+    def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
+        raise NotImplementedError
+
+    ''' Reset reflextions '''
+    def _reflexion_reset_(self)-> None:
+        raise NotImplementedError
+
 
     def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
-        ''' Override this property for any child class IF NECESSARY'''
+        if self.is_reflexion_agent:
+            self._reflexion_reset_()
+            if reference==None:            
+                raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
         self.trial=0
         self.judgement = ['', "PENDING"]
+            
+
 
 
 
@@ -292,8 +333,6 @@ class BaseCustomAgent:
 
 
 
-    def _is_halted(self, timestep:int)-> bool:
-        return self.timestep>self.horizon-1
 
 
     def _parsing_action_argument_value(self, value):

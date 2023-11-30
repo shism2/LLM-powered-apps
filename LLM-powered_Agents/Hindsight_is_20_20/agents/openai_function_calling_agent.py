@@ -41,9 +41,9 @@ class MyAIMessageToAgentActionParser(JsonOutputToolsParser):
 
 
 class OpenAIFuntionCallingAgent(BaseCustomAgent):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.openai_functions = [format_tool_to_openai_function(f) for f in self.tools]
+    @property
+    def is_reflexion_agent(self):
+        return False
 
     @property
     def prompt(self)-> ChatPromptTemplate:
@@ -62,6 +62,11 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
             | self.reasoninig_engine.bind(functions=self.openai_functions)
             | MyAIMessageToAgentActionParser(tools=self.schemas)
         )
+
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.openai_functions = [format_tool_to_openai_function(f) for f in self.tools]
 
 
 

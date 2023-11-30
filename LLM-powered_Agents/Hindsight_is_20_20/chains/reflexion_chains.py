@@ -12,7 +12,7 @@ class BaseReflexionChain:
     def __init__(self, 
                 reasoninig_engine: Any,
                 prompt: ChatPromptTemplate|str,
-                schemas_and_tools: List[Tuple[BaseModel, Dict[str, Tool]]],
+                schemas_and_tools: Any,
                 reflexion_examples: str):
        
         # reasoning engine
@@ -28,8 +28,8 @@ class BaseReflexionChain:
 
         # tools
         self.schemas_and_tools = schemas_and_tools
-        self.schemas = [schema for schema, tool in self.schemas_and_tools]
-        self.tools = [tool for schema, tool in self.schemas_and_tools]
+        self.schemas = self.schemas_and_tools.schemas()
+        self.tools = self.schemas_and_tools.tools()
 
 
         # reflextion few-shot examples

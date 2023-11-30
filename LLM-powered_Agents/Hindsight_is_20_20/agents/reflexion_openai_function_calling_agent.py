@@ -10,6 +10,10 @@ from utils.wrappers import retry
 from openai import RateLimitError 
 
 class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
+    @property
+    def is_reflexion_agent(self):
+        return True
+
     def __init__(self, 
                 reflexion_chain: Any,
                 reflexion_header: str, 
@@ -21,29 +25,6 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
         self.most_recent_reflexion = None
         
         super().__init__(**kwargs)
-
-
-
- 
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
-        ''' Override this property for any child class IF NECESSARY'''
-        self.query = query
-        self.reference = reference if reference != None else ''
-        self.agent_log = ''
-        self.prediction = ''
-        self.timestep = -1
-        self.done = False    
-        self.intermediate_steps = []
-        self.judgement = ['', 0]
-        self.a = None
-        self.s_prime = ''
-        if self.trial>0:
-            self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
-            self._do_reflexion_(self.trajectory_only_log_for_reflexion)
-            reflexion_loglevel = 'info' if len(self.most_recent_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
-            self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
-            self.collect_logs(self.most_recent_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
-
 
 
 
@@ -67,7 +48,6 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
     ''' Reflect '''
     def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
-
         new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.most_recent_reflexion = self.reflexion_header + new_reflexion
