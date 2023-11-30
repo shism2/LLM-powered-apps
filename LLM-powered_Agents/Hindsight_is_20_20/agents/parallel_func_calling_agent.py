@@ -63,26 +63,9 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         
         if self.use_chat_completion_api: 
             if self.azure_apenai_client==None:
-                raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")            
-            self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
-            self.messages.append({'role':'user', 'content':''})
+                raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")
             self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict_async
             self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict_async
-
-     
-    ### _invoke_agent_action ###    
-    # @retry(allowed_exceptions=(RateLimitError,))
-    # def _invoke_agent_action(self, query):
-    #     if not self.use_chat_completion_api:
-    #         raise NotImplementedError
-    #     else:         
-    #         self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}   
-    #         chat_response = self.parsing_to_ai_msg_dict_parser(
-    #                     self.azure_apenai_client.chat_completions_create(
-    #                     messages=self.messages, 
-    #                     tools=self.openai_functions)
-    #                 )
-    #         return chat_response
 
     @retry(allowed_exceptions=(RateLimitError,))
     async def _invoke_agent_action_async(self, query):
@@ -106,22 +89,20 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
 
-    def run_agent_episode(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
+    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
         self._before_agent_episode(query=query, reference=reference)
         self.agent_log += f"Qurey: {query}\n"
         if single_episode:
-            self.collect_logs(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (True, 'info'))
-            self.collect_logs(f"Query: {query}", (True, 'info'), (True, 'info'), (True, 'info'))
+            await self.collect_logs_async(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (True, 'info'))
+            await self.collect_logs_async(f"Query: {query}", (True, 'info'), (True, 'info'), (True, 'info'))
         else:
-            self.collect_logs(f"Trial {trial+1}", (False, 'info'), (False, 'info'), (True, 'info'))
-            self.collect_logs(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
+            await self.collect_logs_async(f"Trial {trial+1}", (False, 'info'), (False, 'info'), (True, 'info'))
+            await self.collect_logs_async(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.a, self.s_prime, self.is_termination_state  = self.agent_step(query)       
+            self.a, self.s_prime, self.is_termination_state  = await self.agent_step_async(query)       
             self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
 
-
-            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
             if not self.done:
                 self.timestep += 1
 
@@ -130,8 +111,8 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.prediction = self.a['content'] 
         else: 
             self.prediction = "HALTED"
-        self.judgement = self._assessment()
-        self._add_judgement_to_agent_log()
+        self.judgement = await self._assessment_async()
+        await self._add_judgement_to_agent_log_async()
 
 
 
@@ -145,7 +126,6 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             raise NotImplementedError
         try:
             agent_action = await self._invoke_agent_action_async(query)  
-            return agent_action  
             self.messages.append(agent_action) # This must be here
             try:
                 Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
@@ -171,36 +151,6 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         invocation_result = await self.tool_dictionary[tool].arun(**tool_input)
         return invocation_result
 
-    #### _func_execution #### 
-    # def _func_execution(self, agent_action)-> Tuple[str,str]:
-    #     '''
-    #     In the Reinforcement-learning context, '_func_execution' method is reponsible for producing 'next state (s_prime)'.
-    #     Here 'Obserbation' acts as 's_prime'. It additionally return the log string (Thought_Action+'\n'+Observation+'\n').  
-    #     '''
-    #     if not self.use_chat_completion_api:
-    #         raise NotImplementedError
-
-    #     tool_calls = agent_action['tool_calls']
-    #     Observation_loglevel = 'error'
-    #     Thought, Action = self._parsing_Thought_and_Action_into_str(tool_calls)        
-    #     Thought_Action = Thought+'\n'+Action if Thought != '' else Action
-    #     if tool_calls:
-    #         # try:
-    #         observations = [(tool_call.id, tool_call.function.name, self._get_function_observation(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]
-    #         are_all_excpetion = sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)
-    #         if not are_all_excpetion:
-    #             Observation_loglevel = 'info'
-    #         tool_messages = self.parsing_to_tool_msg_dict_parser(observations)
-    #         self.messages += tool_messages
-    #         Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
-    #     else:
-    #         Observation_loglevel = 'info'
-    #         Observation = f"Answer: {(agent_action['content']).strip()}" 
-
-    #     self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
-    #     return Observation, Thought_Action+'\n'+Observation+'\n'
-
-
 
     async def _func_execution_async(self, agent_action)-> Tuple[str,str]:
         if not self.use_chat_completion_api:
@@ -208,11 +158,13 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
         tool_calls = agent_action['tool_calls']
         Observation_loglevel = 'error'
-        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)   
+        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
         if tool_calls:
-            # try:
-            observations = await asyncio.gather(*[(tool_call.id, tool_call.function.name, self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments))) for tool_call in tool_calls]) 
+            
+            ### 이부분 순서가 섞일 수 있음. for 문으로 수정
+            tasks = await asyncio.gather(*[self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls])
+            observations = [(tool_call.id, tool_call.function.name, task) for task, tool_call in zip(tasks, tool_calls)]
             are_all_tools_excpetion = await self.are_all_tools_excpetion(observations)
             if not are_all_tools_excpetion:
                 Observation_loglevel = 'info'
@@ -223,7 +175,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             Observation_loglevel = 'info'
             Observation = f"Answer: {(agent_action['content']).strip()}" 
 
-        self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))  
+        await self.collect_logs_async(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))  
         return Observation, Thought_Action+'\n'+Observation+'\n'
 
     async def are_all_tools_excpetion(self, observations):
@@ -275,13 +227,16 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         except Exception as e:
             Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Failed to parse Action into str. The error message is "{e}".'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
+        
         return '', Action 
 
     async def _parsing_Thought_and_Action_into_str_a(self, tool_calls:str)-> Tuple[str, str]:   
-        return self._parsing_Thought_and_Action_into_str(tool_calls)
+        _, Action = self._parsing_Thought_and_Action_into_str(tool_calls) 
+        return '', Action
     
     async def _parsing_Thought_and_Action_into_str_async(self, tool_calls:str)-> Tuple[str, str]:
-        Action = await self._parsing_Thought_and_Action_into_str_a(tool_calls)
+        _, Action = await self._parsing_Thought_and_Action_into_str_a(tool_calls)
+        
         return '', Action 
 
 
@@ -300,15 +255,6 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             return Action
         except Exception as e:
             raise Exception(e)
-        
-    # async def _parsing_action_into_str_a(self, tool_calls:List[Dict])-> str:
-    #     return self._parsing_action_into_str(tool_calls)
-
-    # async def _parsing_action_into_str_async(self, tool_calls:List[Dict])-> str:
-    #     if not self.use_chat_completion_api:
-    #         raise NotImplementedError
-    #     Action = await self._parsing_action_into_str_a(tool_calls)
-    #     return Action
 
     def __parse_into_func_name_args__(self, name, **kwargs):
         args_list = ', '.join([f"{key}={value}" for key, value in kwargs.items()])  

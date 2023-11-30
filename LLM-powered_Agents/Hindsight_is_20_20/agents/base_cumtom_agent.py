@@ -143,6 +143,14 @@ class BaseCustomAgent:
         if self.file_logging and trajectory[0]:
             trajectory_log_method(message)
 
+    async def collect_logs_a(self, message: str, console: Tuple[bool, str], e2e: Tuple[bool, str], trajectory: Tuple[bool, str]):
+        self.collect_logs(message=message, console=console, e2e=e2e, trajectory=trajectory)
+    
+    async def collect_logs_async(self, message: str, console: Tuple[bool, str], e2e: Tuple[bool, str], trajectory: Tuple[bool, str]):
+        await self.collect_logs_a(message=message, console=console, e2e=e2e, trajectory=trajectory)
+
+
+
     def get_logger_name_prefix(self):
         korea_time = datetime.now(pytz.timezone('Asia/Seoul'))  
         year, month, day = korea_time.year, korea_time.month, korea_time.day
@@ -236,6 +244,12 @@ class BaseCustomAgent:
             self.trajectory_only_log_for_reflexion += (self.judgement[0].split(" The correct answer is"))[0]
             self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (False, 'info')) 
             self.collect_logs((self.judgement[0].split(" The correct answer is"))[0], (False, 'info'), (False, 'info'), (True, 'info')) 
+    
+    async def _add_judgement_to_agent_log_a(self):
+        self._add_judgement_to_agent_log()
+
+    async def _add_judgement_to_agent_log_async(self):
+        await self._add_judgement_to_agent_log_a()
 
     def _assessment(self):
         ''' Override this property for any child class IF NECESSARY'''
@@ -257,6 +271,13 @@ class BaseCustomAgent:
         else:
             judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', 'HALTED']
         return judgement
+
+    async def _assessment_a(self):
+        return self._assessment()
+
+    async def _assessment_async(self):
+        result = await  self._assessment_a()
+        return result
 
 
     def _before_agent_step(self):

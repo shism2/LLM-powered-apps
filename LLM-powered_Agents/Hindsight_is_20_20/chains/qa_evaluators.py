@@ -3,6 +3,7 @@ from typing import Optional
 from utils.wrappers import retry
 from openai import RateLimitError
 from reasoning_engines.langchain_llm_wrappers import QuickAzureChatOpenAI
+import asyncio
 
 class CustomQAEvaluator:
     def __init__(self, llm: Optional=None, azure_gpt_version: Optional[str]=None):
@@ -19,3 +20,16 @@ class CustomQAEvaluator:
             prediction = prediction, 
             reference = reference,
         )
+    
+    @retry(allowed_exceptions=(RateLimitError,))
+    async def evaluate_strings_a(self, query: str, reference: str, prediction: str):
+        return self.evaluator.evaluate_strings(
+            input = query, 
+            prediction = prediction, 
+            reference = reference,
+        )
+    
+    async def evaluate_strings_async(self, query: str, reference: str, prediction: str):
+        result = await self.evaluate_strings_a(query=query, reference=reference, prediction=prediction)
+        return result
+
