@@ -33,6 +33,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         raise NotImplementedError 
 
 
+
     def __init__(self, use_chat_completion_api:bool=False, azure_apenai_client: Optional=None, **kwargs):        
         self.use_chat_completion_api = use_chat_completion_api
         super().__init__(**kwargs)

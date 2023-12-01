@@ -80,6 +80,7 @@ class ReActAgent(BaseCustomAgent):
             super().__init__(**kwargs)
 
 
+
     ''' <<< Parsing into string >>>'''
     def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
         return format_log_to_str(intermediate_steps)

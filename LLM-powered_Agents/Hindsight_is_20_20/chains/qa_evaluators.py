@@ -13,6 +13,7 @@ class CustomQAEvaluator:
         self.evaluator_type = 'qa'
         self.evaluator = load_evaluator(evaluator=self.evaluator_type, llm=self.llm)
 
+
     @retry(allowed_exceptions=(RateLimitError,))
     def __call__(self, query: str, reference: str, prediction: str):
         return self.evaluator.evaluate_strings(
@@ -21,7 +22,6 @@ class CustomQAEvaluator:
             reference = reference,
         )
     
-    @retry(allowed_exceptions=(RateLimitError,))
     async def evaluate_strings_a(self, query: str, reference: str, prediction: str):
         return self.evaluator.evaluate_strings(
             input = query, 

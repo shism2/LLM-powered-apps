@@ -33,7 +33,6 @@ def retry(allowed_exceptions=(Exception,), return_message: str=''):
                     else:
                         raise Exception
 
-
         return wrapper
     return decorator
 
