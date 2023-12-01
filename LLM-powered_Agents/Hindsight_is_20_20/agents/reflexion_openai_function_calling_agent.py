@@ -28,16 +28,7 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
 
 
-    ''' OVERRIDE '''
-    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
-        if reference==None:            
-            raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
-        self.trial=0
-        self.judgement = ['', 0]
-        self._reflexion_reset_()
-
-
-    ''' OVERRIDE '''
+    ''' <<< Invoke Brain >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):
         return self.brain.invoke({
@@ -45,14 +36,27 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
                 'input': query,
                 'reflections':self.reflexion if self.trial>0 else '', 
             })
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-    ''' Reflect '''
+
+
+    ''' <<< run_agent_trials >>> '''
+    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
+        if reference==None:            
+            raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
+        self.trial=0
+        self.judgement = ['', 0]
+        self._reflexion_reset_()
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+    ''' <<< Reflection >>>'''
     def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
         new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.most_recent_reflexion = self.reflexion_header + new_reflexion
 
-    ''' Reset reflextions '''
     def _reflexion_reset_(self)-> None:
         self.reflexion = ''+self.reflexion_header
         self.most_recent_reflexion = None
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
