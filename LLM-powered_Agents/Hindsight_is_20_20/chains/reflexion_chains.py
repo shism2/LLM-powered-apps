@@ -58,19 +58,6 @@ class BaseReflexionChain:
         return self.prompt | self.reasoninig_engine    
 
 
-    # def __call__(self, previous_trial: str)-> str:
-    #     try:
-    #         FLAG = True
-    #         while FLAG:
-    #             try:
-    #                 reflexion = '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content
-    #                 FLAG = False
-    #             except RateLimitError as e:
-    #                 self.sleep(e)                      
-    #     except Exception as e:
-    #         reflexion = '\n- ' + f'I could not produce a reflexion for this trial because of an unexpected error to my reflexion brain. The error message if {e}'
-    #     return reflexion
-
     @retry(allowed_exceptions=(RateLimitError,))
     def get_reflextion(self, previous_trial: str)->str:
         return '\n- ' + self.reflexion_chain.invoke({'previous_trial':previous_trial}).content                                  

@@ -158,6 +158,7 @@ class BaseCustomAgent:
         return word.lower() in words  
 
 
+
     ''' <<< Invoke Brain >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
     def _invoke_agent_action(self, query):

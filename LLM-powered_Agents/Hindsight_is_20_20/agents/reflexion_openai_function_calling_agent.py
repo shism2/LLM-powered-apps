@@ -14,6 +14,7 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
     def is_reflexion_agent(self):
         return True
 
+
     def __init__(self, 
                 reflexion_chain: Any,
                 reflexion_header: str, 
