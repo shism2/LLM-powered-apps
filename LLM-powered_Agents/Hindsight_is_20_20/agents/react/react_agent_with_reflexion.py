@@ -1,5 +1,4 @@
-from agents.base_cumtom_agent import BaseCustomAgent
-from agents.react_agents import ReActAgent
+from agents.react.react_agent import ReActAgent
 from typing import Any, List, Tuple, Optional, Dict
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.output_parsers import JSONAgentOutputParser
@@ -11,7 +10,7 @@ from utils.wrappers import retry
 from openai import RateLimitError
 
 
-class ReflexionReActAgent(ReActAgent):
+class ReActWithReflexionAgent(ReActAgent):
     @property
     def is_reflexion_agent(self):
         return True
@@ -29,7 +28,7 @@ class ReflexionReActAgent(ReActAgent):
 
     ''' Trigger Brain (agent chain) : OVERRIDE '''
     @retry(allowed_exceptions=(RateLimitError,))
-    def _invoke_agent_action(self, query):
+    def invoke_agent_action(self, query):
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,
                 'input': query,
@@ -38,14 +37,14 @@ class ReflexionReActAgent(ReActAgent):
 
 
     ''' Reflect '''
-    def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
+    def do_reflexion(self, trajectory_only_log_for_reflexion:str)-> str:
 
         new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.most_recent_reflexion = self.reflexion_header + new_reflexion
 
     ''' Reset reflextions '''
-    def _reflexion_reset_(self)-> None:
+    def reflexion_reset(self)-> None:
         self.reflexion = ''+self.reflexion_header
         self.most_recent_reflexion = None
 

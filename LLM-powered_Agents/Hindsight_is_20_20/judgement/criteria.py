@@ -38,17 +38,3 @@ def EM(answer, key: str) -> bool:
     return normalize_answer(answer) == normalize_answer(key)
 
 
-class QA_Evaluator:
-    def __init__(self, llm: Optional[LangChainLLMWrapper]=None):
-        self.llm = llm if llm != None else LangChainLLMWrapper(Configurations()).llm
-        self.evaluator_type = 'qa'
-        self.evaluator = load_evaluator(evaluator=self.evaluator_type, llm=self.llm)
-
-    @retry(allowed_exceptions=(RateLimitError,))
-    def __call__(self, query: str, reference: str, prediction: str):
-        return self.evaluator.evaluate_strings(
-            input = query, 
-            prediction = prediction, 
-            reference = reference,
-        )
-

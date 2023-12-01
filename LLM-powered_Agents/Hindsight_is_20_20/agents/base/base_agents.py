@@ -11,7 +11,7 @@ from langchain.agents import Tool
 from langchain.agents.format_scratchpad.log import format_log_to_str
 from langchain import hub
 from langchain.tools.render import render_text_description_and_args
-from loggers.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
+from utils.get_loggers import get_hd22_file_logger, get_hd22_stream_logger
 from openai import RateLimitError
 import time
 from utils.wrappers import retry
@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 
 
 
-class BaseCustomAgent:
+class BaseAgent(ABC):
     @property
     def is_reflexion_agent(self):
         return False
@@ -109,8 +109,8 @@ class BaseCustomAgent:
         self.s_prime = ''
 
         # agent_reset
-        self._before_agent_episode()
-        self._before_agent_trials(reference='Instance initialization')
+        self.before_agent_episode()
+        self.before_agent_trials(reference='Instance initialization')
 
 
 <<<<<<< HEAD
@@ -120,8 +120,8 @@ class BaseCustomAgent:
 =======
 >>>>>>> temp_1125
     def agent_reset(self):
-        self._before_agent_episode()
-        self._before_agent_trials(reference='Instance initialization')
+        self.before_agent_episode()
+        self.before_agent_trials(reference='Instance initialization')
 
     def clear_logs(self):
         with open(os.path.join(self.e2e_log_folder, self.get_logger_name_prefix()+'_e2e.log'), 'w') as f:
@@ -157,18 +157,41 @@ class BaseCustomAgent:
         words = sentence.lower().split()    
         return word.lower() in words  
 
+    def is_halted(self, timestep:int)-> bool:
+        return (self.timestep >= self.horizon-1) and (not self.is_termination_state)
+
+
+    def add_judgement_to_agent_log(self):
+        if self.judgement[1] != 'INCORRECT':
+            "Judgement does not contain the reference"
+            self.agent_log += self.judgement[0]
+            self.trajectory_only_log_for_reflexion = self.agent_log
+            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (True, 'info')) 
+        else:
+            self.trajectory_only_log_for_reflexion = copy.deepcopy(self.agent_log)
+            self.agent_log += self.judgement[0]
+            self.trajectory_only_log_for_reflexion += (self.judgement[0].split(" The correct answer is"))[0]
+            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (False, 'info')) 
+            self.collect_logs((self.judgement[0].split(" The correct answer is"))[0], (False, 'info'), (False, 'info'), (True, 'info')) 
+    
+    async def add_judgement_to_agent_log_a(self):
+        self.add_judgement_to_agent_log()
+
+    async def add_judgement_to_agent_log_async(self):
+        await self.add_judgement_to_agent_log_a()
+
 
 
     ''' <<< Invoke Brain >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
-    def _invoke_agent_action(self, query):
+    def invoke_agent_action(self, query):
         ''' Override this property for any child class  IF NECESSARY'''
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,
                 'input': query
             })
 
-    def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
+    def invoke_agent_action_for_exception(self, e: Optional[str]=None):
         ''' Suppoer Acync by appending _async '''
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
         log += '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```'
@@ -178,17 +201,17 @@ class BaseCustomAgent:
                 tool_input='',
                 type = 'AgentAction')
     
-    async def _invoke_agent_action_for_exception_a(self, e: Optional[str]=None):
-        return self._invoke_agent_action_for_exception(e)
+    async def invoke_agent_action_for_exception_a(self, e: Optional[str]=None):
+        return self.invoke_agent_action_for_exception(e)
     
-    async def _invoke_agent_action_for_exception_async(self, e: Optional[str]=None):
-        result = await self._invoke_agent_action_for_exception_a(e)
+    async def invoke_agent_action_for_exception_async(self, e: Optional[str]=None):
+        result = await self.invoke_agent_action_for_exception_a(e)
         return result
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< run_agent_step >>> '''
-    def _before_agent_step(self):
+    def before_agent_step(self):
         ''' Override this property for any child class IF NECESSARY'''
         pass
 
@@ -198,17 +221,17 @@ class BaseCustomAgent:
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
         """
-        self._before_agent_step()        
+        self.before_agent_step()        
         try: 
             ''' Invoke Brain (LLM) '''
-            agent_action = self._invoke_agent_action(query)        
+            agent_action = self.invoke_agent_action(query)        
         except Exception as e:
             """ Exception to Brain (LLM) """
-            agent_action = self._invoke_agent_action_for_exception(e)
-            Observation, temp_scratchpad = self._func_execution_for_exception(e)
+            agent_action = self.invoke_agent_action_for_exception(e)
+            Observation, temp_scratchpad = self.func_execution_for_exception(e)
         
         ''' No Exception to Brain (LLM) '''
-        Observation, temp_scratchpad = self._func_execution(agent_action=agent_action)
+        Observation, temp_scratchpad = self.func_execution(agent_action=agent_action)
         
         self.agent_log += temp_scratchpad
         is_termination_state = True if isinstance(agent_action, AgentFinish) else False 
@@ -218,30 +241,30 @@ class BaseCustomAgent:
 
     ''' <<< tool invocation >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
-    def _get_function_observation(self, tool, tool_input):
+    def get_function_observation(self, tool, tool_input):
         ''' Suppost Async by appending _async'''
         return self.tool_dictionary[tool].run(**tool_input)
 
-    async def _get_function_observation_a(self, tool, tool_input):
-        return self._get_function_observation(tool=tool, tool_input=tool_input)
+    async def get_function_observation_a(self, tool, tool_input):
+        return self.get_function_observation(tool=tool, tool_input=tool_input)
 
-    async def _get_function_observation_async(self, tool, tool_input):
-        invocation_result = await self._get_function_observation_a(tool=tool, tool_input=tool_input)
+    async def get_function_observation_async(self, tool, tool_input):
+        invocation_result = await self.get_function_observation_a(tool=tool, tool_input=tool_input)
         return invocation_result
 
-    def _func_execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
+    def func_execution(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
         '''
-        In the Reinforcement-learning context, '_func_execution' method is reponsible for producing 'next state (s_prime)'.
+        In the Reinforcement-learning context, 'func_execution' method is reponsible for producing 'next state (s_prime)'.
         Here 'Obserbation' acts as 's_prime'. It additionally return the log string (Thought_Action+'\n'+Observation+'\n').  
         '''
-        Thought, Action = self._parsing_Thought_and_Action_into_str(agent_action.log)
+        Thought, Action = self.parsing_Thought_and_Action_into_str(agent_action.log)
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
        
         # Either Observation or Answer
         Observation_loglevel = 'error'
         if isinstance(agent_action, AgentAction):
             try:
-                observation = self._get_function_observation(agent_action.tool, agent_action.tool_input)
+                observation = self.get_function_observation(agent_action.tool, agent_action.tool_input)
                 Observation = (f'Observation {self.timestep+1}: '+observation).rstrip('\n')
                 Observation_loglevel = 'info'
             except Exception as e:
@@ -258,7 +281,7 @@ class BaseCustomAgent:
 
 
 
-    def _func_execution_for_exception(self, e: Optional[str]=None) :        
+    def func_execution_for_exception(self, e: Optional[str]=None) :        
         ''' Suppost Async by appending _async'''
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
          
@@ -276,11 +299,11 @@ class BaseCustomAgent:
 
         return Observation, Thought+'\n'+Action+'\n'+Observation+'\n' 
 
-    async def _func_execution_for_exception_a(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)):      
-        return self._func_execution_for_exception(e, collect_logs=collect_logs)
+    async def func_execution_for_exception_a(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)):      
+        return self.func_execution_for_exception(e, collect_logs=collect_logs)
 
-    async def _func_execution_for_exception_async(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)) :    
-        Observation, temp_scratchpad = await self._func_execution_for_exception_a(e, collect_logs=collect_logs)
+    async def func_execution_for_exception_async(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)) :    
+        Observation, temp_scratchpad = await self.func_execution_for_exception_a(e, collect_logs=collect_logs)
         return Observation, temp_scratchpad 
 
     async def _are_all_tools_excpetion(self, observations:List):
@@ -290,7 +313,7 @@ class BaseCustomAgent:
 
 
     ''' <<< run_agent_episode >>> '''
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+    def before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
         ''' Support Async by appending _async '''
         self.query = query
         self.reference = reference if reference != None else ''
@@ -306,22 +329,22 @@ class BaseCustomAgent:
         if self.is_reflexion_agent:
             if self.trial>0:
                     self.collect_logs(f"Reflexion......", (True, 'info'), (True, 'info'), (False, 'info'))            
-                    self._do_reflexion_(self.trajectory_only_log_for_reflexion)
+                    self.do_reflexion(self.trajectory_only_log_for_reflexion)
                     reflexion_loglevel = 'info' if len(self.most_recent_reflexion.split('I could not produce a reflexion for this trial'))==1 else 'error'
                     self.collect_logs(self.reflexion, (True, reflexion_loglevel), (True, reflexion_loglevel), (False, reflexion_loglevel))
                     self.collect_logs(self.most_recent_reflexion, (False, reflexion_loglevel), (False, reflexion_loglevel), (True, reflexion_loglevel))
 
-    async def _before_agent_episode_a(self, query: Optional[str]=None, reference: Optional[str]=None):
-        self._before_agent_episode(query=query, reference=reference)
+    async def before_agent_episode_a(self, query: Optional[str]=None, reference: Optional[str]=None):
+        self.before_agent_episode(query=query, reference=reference)
 
 
-    async def _before_agent_episode_async(self, query: Optional[str]=None, reference: Optional[str]=None):
-        await self._before_agent_episode_a(query=query, reference=reference)
+    async def before_agent_episode_async(self, query: Optional[str]=None, reference: Optional[str]=None):
+        await self.before_agent_episode_a(query=query, reference=reference)
 
 
 
     def run_agent_episode(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
-        self._before_agent_episode(query=query, reference=reference)
+        self.before_agent_episode(query=query, reference=reference)
         self.agent_log += f"Qurey: {query}\n"
         if single_episode:
             self.collect_logs(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (True, 'info'))
@@ -335,39 +358,39 @@ class BaseCustomAgent:
             if not self.is_termination_state:  
                 self.intermediate_steps.append((self.a, self.s_prime))            
             
-            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
+            self.done = True if (self.is_termination_state) or (self.is_halted(self.timestep)) else False
             if not self.done:
                 self.timestep += 1
 
 
         # assessment the output
-        if not self._is_halted(self.timestep):
+        if not self.is_halted(self.timestep):
             self.prediction = self.a.return_values['output'] 
         else: 
             self.prediction = "HALTED"
-        self.judgement = self._assessment()
-        self._add_judgement_to_agent_log()
+        self.judgement = self.assessment()
+        self.add_judgement_to_agent_log()
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< run_agent_trials >>> '''
-    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
+    def before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
         ''' Suppost Async by appending _async'''
         if self.is_reflexion_agent:
-            self._reflexion_reset_()
+            self.reflexion_reset()
             if reference==None:            
                 raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
         self.trial=0
         self.judgement = ['', "PENDING"]
         
-    async def _before_agent_trials_a(self, query: Optional[str]=None, reference: Optional[str]=None):
-        self._before_agent_trials(query=query, reference=reference)
+    async def before_agent_trials_a(self, query: Optional[str]=None, reference: Optional[str]=None):
+        self.before_agent_trials(query=query, reference=reference)
     
-    async def _before_agent_trials_async(self, query: Optional[str]=None, reference: Optional[str]=None):
-        await self._before_agent_trials_a(query=query, reference=reference)
+    async def before_agent_trials_async(self, query: Optional[str]=None, reference: Optional[str]=None):
+        await self.before_agent_trials_a(query=query, reference=reference)
 
     def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
-        self._before_agent_trials(query=query, reference=reference)
+        self.before_agent_trials(query=query, reference=reference)
         self.collect_logs(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
         self.collect_logs(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
         
@@ -379,18 +402,18 @@ class BaseCustomAgent:
 
 
     ''' <<< Parsing into string >>>'''
-    def _parsing_action_argument_value(self, value):
+    def parsing_action_argument_value(self, value):
         try:
             float(value)
         except:
             value = "'"+value+"'"
         return value
 
-    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+    def parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
         ''' Override this property for any child class IF NECESSARY'''
         raise NotImplementedError
 
-    def _parsing_Thought_and_Action_into_str(self, data)-> Tuple[str, str]:
+    def parsing_Thought_and_Action_into_str(self, data)-> Tuple[str, str]:
         ''' Support Async by appending _async '''
         Thought_loglevel = 'error'
         Action_loglevel = 'error'
@@ -399,7 +422,7 @@ class BaseCustomAgent:
             if self.contains_word(action, "```json"):
                 action = action.replace("```json", "```") # proactive correcting for gpt-4-turbo 1106
             try:
-                Thought = self._parsing_thought_into_str(thought)
+                Thought = self.parsing_thought_into_str(thought)
                 Thought_loglevel = 'info'
             except Exception as e:
                 Thought = f'{self.thought_word[:-1]} {self.timestep+1}: Failed to parse Thought into str. The original string is "{thought}"'
@@ -409,23 +432,23 @@ class BaseCustomAgent:
 
         try:    
             action = data if self.thought_word==None else action
-            Action = self._parsing_action_into_str(action)
+            Action = self.parsing_action_into_str(action)
             Action_loglevel = 'info'
         except Exception as e:
             Action = f'{self.action_word[:-1]} {self.timestep+1}: Failed to parse Action into str. The original string is "{action}"'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
         return Thought, Action 
 
-    async def _parsing_Thought_and_Action_into_str_a(self, data)-> Tuple[str, str]:   
-        _, Action = self._parsing_Thought_and_Action_into_str(data) 
+    async def parsing_Thought_and_Action_into_str_a(self, data)-> Tuple[str, str]:   
+        _, Action = self.parsing_Thought_and_Action_into_str(data) 
         return '', Action
     
-    async def _parsing_Thought_and_Action_into_str_async(self, data)-> Tuple[str, str]:
-        _, Action = await self._parsing_Thought_and_Action_into_str_a(data)        
+    async def parsing_Thought_and_Action_into_str_async(self, data)-> Tuple[str, str]:
+        _, Action = await self.parsing_Thought_and_Action_into_str_a(data)        
         return '', Action 
 
 
-    def _parsing_thought_into_str(self, raw_thought_string:str)-> str:
+    def parsing_thought_into_str(self, raw_thought_string:str)-> str:
         try:    
             Thought = raw_thought_string.strip()
             Thought = f'{self.thought_word[:-1]} {self.timestep+1}: '+Thought  if len(Thought.split(self.thought_word))==1 else Thought.replace(f'{self.thought_word[:-1]}: ', f'{self.thought_word[:-1]} {self.timestep+1}: ')
@@ -433,12 +456,12 @@ class BaseCustomAgent:
         except Exception as e:
             raise Exception(e)
 
-    def _parsing_action_into_str(self, raw_action_string:str)-> str:
+    def parsing_action_into_str(self, raw_action_string:str)-> str:
         try:
             data = json.loads(raw_action_string.strip().strip(' `\n'))
             action = data.get('action', '')
             try:
-                action_input = ', '.join(f'{k}={self._parsing_action_argument_value(v)}' for k, v in data.get('action_input', {}).items())  
+                action_input = ', '.join(f'{k}={self.parsing_action_argument_value(v)}' for k, v in data.get('action_input', {}).items())  
             except AttributeError:
                 action_input = data.get('action_input')
 
@@ -448,35 +471,35 @@ class BaseCustomAgent:
         except Exception as e:
             raise Exception(e)
 
-    def _parse_into_func_name_args(self, name, **kwargs):
+    def parse_into_func_name_args(self, name, **kwargs):
         args_list = ', '.join([f"{key}={value}" for key, value in kwargs.items()])  
         return f"{name}({args_list})"         
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< Reflection >>>'''
-    def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
+    def do_reflexion(self, trajectory_only_log_for_reflexion:str)-> str:
         ''' Support Async by appending _async '''
         raise NotImplementedError
-    async def _do_reflexion_a(self, trajectory_only_log_for_reflexion:str)-> str:
-        self._do_reflexion_(trajectory_only_log_for_reflexion)
-    async def _do_reflexion_async(self, trajectory_only_log_for_reflexion:str)-> str:
-        await self._do_reflexion_a(trajectory_only_log_for_reflexion)
+    async def do_reflexion_a(self, trajectory_only_log_for_reflexion:str)-> str:
+        self.do_reflexion(trajectory_only_log_for_reflexion)
+    async def do_reflexion_async(self, trajectory_only_log_for_reflexion:str)-> str:
+        await self.do_reflexion_a(trajectory_only_log_for_reflexion)
 
-    def _reflexion_reset_(self)-> None:
+    def reflexion_reset(self)-> None:
         ''' Support Async by appending _async '''
         raise NotImplementedError
-    async def _reflexion_reset_a(self)-> None:
+    async def reflexion_reset_a(self)-> None:
         ''' Support Async by appending _async '''
-        self._reflexion_reset_()
-    async def _reflexion_reset_async(self)-> None:
+        self.reflexion_reset()
+    async def reflexion_reset_async(self)-> None:
         ''' Support Async by appending _async '''
-        await self._reflexion_reset_a()
+        await self.reflexion_reset_a()
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< QA assessment >>> '''
-    def _assessment(self):
+    def assessment(self):
         ''' Suppoer Async by appending _async'''
         if self.prediction != 'HALTED':            
             evaluation = self.evaluator(
@@ -497,38 +520,16 @@ class BaseCustomAgent:
             judgement =  [f'Jugdement: You failed to provide an answer because you exceeded the permitted number of reasoning steps. You must give an answer within {self.horizon} steps.', 'HALTED']
         return judgement
 
-    async def _assessment_a(self):
-        return self._assessment()
+    async def assessment_a(self):
+        return self.assessment()
 
-    async def _assessment_async(self):
-        result = await  self._assessment_a()
+    async def assessment_async(self):
+        result = await  self.assessment_a()
         return result
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
-    ####################### Helper methods #######################
-    def _is_halted(self, timestep:int)-> bool:
-        return (self.timestep >= self.horizon-1) and (not self.is_termination_state)
 
-
-    def _add_judgement_to_agent_log(self):
-        if self.judgement[1] != 'INCORRECT':
-            "Judgement does not contain the reference"
-            self.agent_log += self.judgement[0]
-            self.trajectory_only_log_for_reflexion = self.agent_log
-            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (True, 'info')) 
-        else:
-            self.trajectory_only_log_for_reflexion = copy.deepcopy(self.agent_log)
-            self.agent_log += self.judgement[0]
-            self.trajectory_only_log_for_reflexion += (self.judgement[0].split(" The correct answer is"))[0]
-            self.collect_logs(self.judgement[0], (True, 'info'), (True, 'info'), (False, 'info')) 
-            self.collect_logs((self.judgement[0].split(" The correct answer is"))[0], (False, 'info'), (False, 'info'), (True, 'info')) 
-    
-    async def _add_judgement_to_agent_log_a(self):
-        self._add_judgement_to_agent_log()
-
-    async def _add_judgement_to_agent_log_async(self):
-        await self._add_judgement_to_agent_log_a()
 
 
 

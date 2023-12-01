@@ -1,7 +1,7 @@
 import time, json, copy, ast, os
 from typing import List, Type, Any, Optional,Literal, Tuple, Dict
 from pydantic import BaseModel, Field
-from agents.base_cumtom_agent import BaseCustomAgent
+from agents.base.base_agents import BaseAgent
 from langchain.schema.agent import AgentAction, AgentFinish, AgentActionMessageLog
 from langchain.output_parsers.openai_tools import JsonOutputToolsParser
 from langchain_core.outputs import ChatGeneration, Generation
@@ -19,7 +19,7 @@ import asyncio
 
 
 
-class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
+class OpenAIParallelAgent(BaseAgent):
     @property
     def is_reflexion_agent(self):
         return False
@@ -49,19 +49,19 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.parsing_to_ai_msg_dict_parser_async = parsing_to_ai_msg_dict_async
             self.parsing_to_tool_msg_dict_parser_async = parsing_to_tool_msg_dict_async
     
-    async def append_messages_async(self, message):
+    async def _append_messages_async(self, message):
         self.messages.append(message)
 
 
     ''' <<< Invoke Brain >>> '''
-    async def populate_user_message_async(self, query):
+    async def _populate_user_message_async(self, query):
         self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}  
         
     async def _invoke_agent_action_async(self, query):
         if not self.use_chat_completion_api:
             raise NotImplementedError
                  
-        await self.populate_user_message_async(query)
+        await self._populate_user_message_async(query)
         ### Retry decorator does not work well for async functions
         FLAG = True
         while FLAG:
@@ -77,7 +77,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         chat_response = await self.parsing_to_ai_msg_dict_parser_async(chat_response)                            
         return chat_response 
 
-    def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
+    def invoke_agent_action_for_exception(self, e: Optional[str]=None):
         ''' Suppoer Acync by appending _async '''
         if not self.use_chat_completion_api:
             raise NotImplementedError        
@@ -87,24 +87,24 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
     ''' <<< run_agent_step >>> '''
-    async def agent_step_async(self, query: str):
+    async def _agent_step_async(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
         """
-        self._before_agent_step()   
+        self.before_agent_step()   
         if not self.use_chat_completion_api:
             raise NotImplementedError
         
         try:
             ''' Invoke Brain (LLM) '''
             agent_action = await self._invoke_agent_action_async(query)
-            await self.append_messages_async(agent_action) # This must be here
+            await self._append_messages_async(agent_action) # This must be here
         except Exception as e:
             """ Exception to Brain (LLM) """
-            agent_action = await self._invoke_agent_action_for_exception_async(e)
-            await self.append_messages_async(agent_action) # This must be here
-            Observation, temp_scratchpad = await self._func_execution_for_exception_async(e)        
+            agent_action = await self.invoke_agent_action_for_exception_async(e)
+            await self._append_messages_async(agent_action) # This must be here
+            Observation, temp_scratchpad = await self.func_execution_for_exception_async(e)        
         ''' No Exception to Brain (LLM) '''
         Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
         
@@ -116,7 +116,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
     ''' <<< tool invocation >>> '''
     @retry(allowed_exceptions=(RateLimitError,), return_message="Successfully got a tool to invoke but could not invoke it due to Exception.")
-    def _get_function_observation(self, tool, tool_input):
+    def get_function_observation(self, tool, tool_input):
         ''' Suppost Async by appending _async'''
         return self.tool_dictionary[tool].run(**tool_input)
 
@@ -126,11 +126,11 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         
         tool_calls = agent_action['tool_calls']
         Observation_loglevel = 'error'
-        Thought, Action = await self._parsing_Thought_and_Action_into_str_async(tool_calls)
+        Thought, Action = await self.parsing_Thought_and_Action_into_str_async(tool_calls)
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
         if tool_calls:
             
-            tasks = await asyncio.gather(*[self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls])
+            tasks = await asyncio.gather(*[self.get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls])
             observations = [(tool_call.id, tool_call.function.name, task) for task, tool_call in zip(tasks, tool_calls)]
             tool_messages = await self.parsing_to_tool_msg_dict_parser_async(observations)     
             self.messages += tool_messages
@@ -149,7 +149,7 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         return Observation, Thought_Action+'\n'+Observation+'\n'
 
 
-    def _func_execution_for_exception(self, e: Optional[str]=None) :  
+    def func_execution_for_exception(self, e: Optional[str]=None) :  
         ''' Suppost Async by appending _async'''            
         Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not get any response from the Brain (LLM) due to Exception. The error message is "{e}".' 
         self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
@@ -160,15 +160,15 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
     ''' <<< run_agent_episode >>> '''
-    def _before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
-        super()._before_agent_episode(query=query, reference=reference)
+    def before_agent_episode(self, query: Optional[str]=None, reference: Optional[str]=None):
+        super().before_agent_episode(query=query, reference=reference)
         if self.use_chat_completion_api:
             self.messages = []
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
-    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=True)-> None:    
-        await self._before_agent_episode_async(query=query, reference=reference)
+    async def _run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=True)-> None:    
+        await self.before_agent_episode_async(query=query, reference=reference)
         self.agent_log += f"Qurey: {query}\n"
         if single_episode:
             await self.collect_logs_async(f"----- New single test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
@@ -178,64 +178,64 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             await self.collect_logs_async(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.a, self.s_prime, self.is_termination_state  = await self.agent_step_async(query)       
-            self.done = True if (self.is_termination_state) or (self._is_halted(self.timestep)) else False
+            self.a, self.s_prime, self.is_termination_state  = await self._agent_step_async(query)       
+            self.done = True if (self.is_termination_state) or (self.is_halted(self.timestep)) else False
 
             if not self.done:
                 self.timestep += 1
 
         # assessment the output
-        if not self._is_halted(self.timestep):
+        if not self.is_halted(self.timestep):
             self.prediction = self.a['content'] 
         else: 
             self.prediction = "HALTED"
-        self.judgement = await self._assessment_async()
-        await self._add_judgement_to_agent_log_async()
+        self.judgement = await self.assessment_async()
+        await self.add_judgement_to_agent_log_async()
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
 
 
     ''' <<< run_agent_trials >>> '''
-    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
+    def before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
         ''' Suppost Async by appending _async'''
-        super()._before_agent_trials(query=query, reference=reference)
+        super().before_agent_trials(query=query, reference=reference)
         if self.use_chat_completion_api:
             self.messages = []
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
-    async def run_agent_trials_async(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
-        await self._before_agent_trials_async(query=query, reference=reference)
+    async def _run_agent_trials_async(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
+        await self.before_agent_trials_async(query=query, reference=reference)
         await self.collect_logs_async(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
         await self.collect_logs_async(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
         
         while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
             await self.collect_logs_async(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
-            await self.run_agent_episode_async(query=query, reference=reference, trial=self.trial, single_episode=False)  
+            await self._run_agent_episode_async(query=query, reference=reference, trial=self.trial, single_episode=False)  
             self.trial += 1
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< Parsing into string >>> '''
-    def _parsing_Thought_and_Action_into_str(self, tool_calls: List[Dict])-> Tuple[str, str]:
+    def parsing_Thought_and_Action_into_str(self, tool_calls: List[Dict])-> Tuple[str, str]:
         ''' Support Async by appending _async '''
         Action_loglevel = 'error'
         try:    
-            Action = self._parsing_action_into_str(tool_calls)
+            Action = self.parsing_action_into_str(tool_calls)
             Action_loglevel = 'info'
         except Exception as e:
             Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Successfully got a list of tools to invoke but could not parse them into string format due to parsing error. The error message is "{e}".'
         self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
         return '', Action 
 
-    def _parsing_action_into_str(self, tool_calls: List[Dict])-> str:
+    def parsing_action_into_str(self, tool_calls: List[Dict])-> str:
         if not self.use_chat_completion_api:
             raise NotImplementedError
         try:
             if tool_calls:
                 tools_and_args = [ {'name':tool_call.function.name, 'args':json.loads(tool_call.function.arguments)} for tool_call in tool_calls]
-                results = [ self._parse_into_func_name_args(item['name'], **item['args']) for item in tools_and_args ]  
+                results = [ self.parse_into_func_name_args(item['name'], **item['args']) for item in tools_and_args ]  
                 Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: [' + ', '.join([f'Tool {i+1}-> '+x for i, x in enumerate(results)]) + ']'
             else:
                 Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Now I can answer directly without resorting to any tool.'

@@ -1,4 +1,4 @@
-from agents.base_cumtom_agent import BaseCustomAgent
+from agents.base.base_agents import BaseAgent
 from langchain.tools.render import render_text_description_and_args
 from typing import List, Tuple, Any, Dict, Optional, Literal, Type
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ from langchain.schema.runnable import RunnableLambda
 from datetime import datetime
 import pytz
 
-class ReActAgent(BaseCustomAgent):
+class ReActAgent(BaseAgent):
     @property
     def is_reflexion_agent(self):
         return False
@@ -23,7 +23,7 @@ class ReActAgent(BaseCustomAgent):
     def base_prompt(self)-> ChatPromptTemplate:
         prompt = ChatPromptTemplate.from_messages([self.base_system_prompt, self.base_human_prompt])
         prompt = prompt.partial(
-            tools=self._tool_description_for_system_msg_(self.schemas, self.tools),
+            tools=self._tool_description_for_system_msg(self.schemas, self.tools),
             tool_names=", ".join([t.name for t in self.tools]),
             )
         return prompt
@@ -67,7 +67,7 @@ class ReActAgent(BaseCustomAgent):
             return ai_message_chunk 
 
         brain = (
-            RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._parsing_intermediate_steps_into_str(x["intermediate_steps"]),) 
+            RunnablePassthrough.assign(agent_scratchpad  = lambda x: self.parsing_intermediate_steps_into_str(x["intermediate_steps"]),) 
             | self.base_prompt
             | self.reasoninig_engine.bind(stop=self.stop_words)
             | RunnableLambda(fix_json, afunc=fix_json_async)
@@ -82,12 +82,12 @@ class ReActAgent(BaseCustomAgent):
 
 
     ''' <<< Parsing into string >>>'''
-    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+    def parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
         return format_log_to_str(intermediate_steps)
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
     
 
-    def _tool_description_for_system_msg_(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
+    def _tool_description_for_system_msg(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
         """adapted from langchain's render_text_description_and_args """
         tool_strings = []
         for schema, tool in zip(schemas, tools):

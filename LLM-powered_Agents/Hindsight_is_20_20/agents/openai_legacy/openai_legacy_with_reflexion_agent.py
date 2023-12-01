@@ -1,4 +1,4 @@
-from agents.openai_function_calling_agent import OpenAIFuntionCallingAgent
+from agents.openai_legacy.openai_legacy_agent import OpenAILegacyAgent
 from typing import Any, List, Tuple, Optional, Dict
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.output_parsers import JSONAgentOutputParser
@@ -9,7 +9,7 @@ import pytz
 from utils.wrappers import retry
 from openai import RateLimitError 
 
-class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
+class OpenAILegacyWithReflexionAgent(OpenAILegacyAgent):
     @property
     def is_reflexion_agent(self):
         return True
@@ -31,7 +31,7 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
     ''' <<< Invoke Brain >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
-    def _invoke_agent_action(self, query):
+    def invoke_agent_action(self, query):
         return self.brain.invoke({
                 'intermediate_steps': self.intermediate_steps,
                 'input': query,
@@ -42,22 +42,22 @@ class ReflexionOpenAIFuntionCallingAgent(OpenAIFuntionCallingAgent):
 
 
     ''' <<< run_agent_trials >>> '''
-    def _before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
+    def before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
         if reference==None:            
             raise ValueError("For Reflexion agent, reference should be provided for 'run_agent_trials' method.")
         self.trial=0
         self.judgement = ['', 0]
-        self._reflexion_reset_()
+        self.reflexion_reset()
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< Reflection >>>'''
-    def _do_reflexion_(self, trajectory_only_log_for_reflexion:str)-> str:
+    def do_reflexion(self, trajectory_only_log_for_reflexion:str)-> str:
         new_reflexion = self.reflexion_chain(trajectory_only_log_for_reflexion)
         self.reflexion += new_reflexion
         self.most_recent_reflexion = self.reflexion_header + new_reflexion
 
-    def _reflexion_reset_(self)-> None:
+    def reflexion_reset(self)-> None:
         self.reflexion = ''+self.reflexion_header
         self.most_recent_reflexion = None
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
