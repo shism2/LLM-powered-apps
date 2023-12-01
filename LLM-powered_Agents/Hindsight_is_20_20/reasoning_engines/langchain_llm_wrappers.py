@@ -31,7 +31,7 @@ class QuickGPTClient(ABC):
         pass
 
     ### api without tool use
-    @retry(allowed_exceptions=(RateLimitError,))
+    # @retry(allowed_exceptions=(RateLimitError,))
     def get_chat_response_no_tool_use(self, messages, model, stream):
         return self.client.with_options(max_retries=0).chat.completions.create(
                         messages=messages,
@@ -39,7 +39,7 @@ class QuickGPTClient(ABC):
                         stream=stream)
 
     ### api with tool use
-    @retry(allowed_exceptions=(RateLimitError,))
+    # @retry(allowed_exceptions=(RateLimitError,))
     def get_chat_response_tool_use(self, messages, model, stream, tools):
         return self.client.with_options(max_retries=0).chat.completions.create(
                         messages=messages,
@@ -77,7 +77,7 @@ class AsyncQuickGPTClient(ABC):
         pass
 
     ### api without tool use
-    @retry(allowed_exceptions=(RateLimitError,))
+    # @retry(allowed_exceptions=(RateLimitError,))
     async def get_chat_response_no_tool_use(self, messages, model, stream):
         response = await self.client.with_options(max_retries=0).chat.completions.create(
                         messages=messages,
@@ -86,7 +86,7 @@ class AsyncQuickGPTClient(ABC):
         return response
 
     ### api with tool use
-    @retry(allowed_exceptions=(RateLimitError,))
+    # @retry(allowed_exceptions=(RateLimitError,))
     async def get_chat_response_tool_use(self, messages, model, stream, tools):
         response = await self.client.with_options(max_retries=0).chat.completions.create(
                         messages=messages,

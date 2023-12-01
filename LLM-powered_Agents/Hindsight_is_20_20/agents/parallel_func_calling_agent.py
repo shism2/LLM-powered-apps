@@ -18,19 +18,22 @@ from reasoning_engines.langchain_llm_wrappers import AsyncQuickAzureOpenAIClient
 import asyncio
 
 
+
+def parsing_to_ai_msg_dict(chat_completion_msg):
+    return {'role':'assistant', 'content': chat_completion_msg.content, 'tool_calls' : chat_completion_msg.tool_calls}
+
 async def parsing_to_ai_msg_dict_a(chat_completion_msg):
-    ai_msg_dict = {
-        'role':'assistant', 'content': chat_completion_msg.content, 'tool_calls' : chat_completion_msg.tool_calls
-    }
-    return ai_msg_dict
+    return parsing_to_ai_msg_dict(chat_completion_msg)
 
 async def parsing_to_ai_msg_dict_async(chat_completion_msg):
     ai_msg_dict = await parsing_to_ai_msg_dict_a(chat_completion_msg)
     return ai_msg_dict
 
+def parsing_to_tool_msg_dict(tool_responses: List)-> List:
+    return [{'role':'tool', 'name':tool_response[1], 'tool_call_id':tool_response[0], 'content':tool_response[2]} for tool_response in tool_responses]
+
 async def parsing_to_tool_msg_dict_a(tool_responses: List)-> List:
-    result =   [{'role':'tool', 'name':tool_response[1], 'tool_call_id':tool_response[0], 'content':tool_response[2]} for tool_response in tool_responses]
-    return result
+    return parsing_to_tool_msg_dict(tool_responses)
 
 async def parsing_to_tool_msg_dict_async(tool_responses: List)-> List:
     result =  await parsing_to_tool_msg_dict_a(tool_responses=tool_responses) 
@@ -64,36 +67,45 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         if self.use_chat_completion_api: 
             if self.azure_apenai_client==None:
                 raise ValueError("If use_chat_completion_api, azure_apenai_client must be passed.")
-            self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict_async
-            self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict_async
+            self.parsing_to_ai_msg_dict_parser = parsing_to_ai_msg_dict
+            self.parsing_to_ai_msg_dict_parser_async = parsing_to_ai_msg_dict_async
+            self.parsing_to_tool_msg_dict_parser = parsing_to_tool_msg_dict
+            self.parsing_to_tool_msg_dict_parser_async = parsing_to_tool_msg_dict_async
+
+    #######################################################################
+
+    async def append_messages_async(self, message):
+        self.messages.append(message)
+
+    async def populate_user_message_async(self, query):
+        self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}  
+
 
     @retry(allowed_exceptions=(RateLimitError,))
     async def _invoke_agent_action_async(self, query):
         if not self.use_chat_completion_api:
             raise NotImplementedError
-        else:         
-            self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}   
-            chat_response = await self.azure_apenai_client.chat_completions_create(
-                                        messages=self.messages, 
-                                        tools=self.openai_functions)
-            chat_response = await self.parsing_to_ai_msg_dict_parser(chat_response)                            
-            return chat_response 
+                 
+        await self.populate_user_message_async(query)
+        chat_response = await self.azure_apenai_client.chat_completions_create(messages=self.messages, tools=self.openai_functions)
+        chat_response = await self.parsing_to_ai_msg_dict_parser_async(chat_response)                            
+        return chat_response 
 
     ### _invoke_agent_action_for_exception ### 
     async def _invoke_agent_action_for_exception_async(self, e: Optional[str]=None):
         if not self.use_chat_completion_api:
             raise NotImplementedError
-        else: 
-            log = f'Unexpected Exception has been raised. The error message is "{e}"' if e != None else 'Unexpected Exception has been raised.'
-            return {'role': 'assistant', 'content' : log, 'tool_calls' : None}
+        
+        log = f'Unexpected Exception has been raised. The error message is "{e}"' if e != None else 'Unexpected Exception has been raised.'
+        return {'role': 'assistant', 'content' : log, 'tool_calls' : None}
 
 
 
-    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:    
-        self._before_agent_episode(query=query, reference=reference)
+    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=True)-> None:    
+        await self._before_agent_episode_async(query=query, reference=reference)
         self.agent_log += f"Qurey: {query}\n"
         if single_episode:
-            await self.collect_logs_async(f"Trial {trial+1}", (True, 'info'), (True, 'info'), (True, 'info'))
+            await self.collect_logs_async(f"----- New single test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
             await self.collect_logs_async(f"Query: {query}", (True, 'info'), (True, 'info'), (True, 'info'))
         else:
             await self.collect_logs_async(f"Trial {trial+1}", (False, 'info'), (False, 'info'), (True, 'info'))
@@ -116,6 +128,19 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
 
+    async def run_agent_trials_async(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
+        await self._before_agent_trials_async(query=query, reference=reference)
+        await self.collect_logs_async(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
+        await self.collect_logs_async(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
+        
+        while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
+            await self.collect_logs_async(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
+            await self.run_agent_episode_async(query=query, reference=reference, trial=self.trial, single_episode=False)  
+            self.trial += 1
+
+
+
+
     async def agent_step_async(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
@@ -124,31 +149,31 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         self._before_agent_step()   
         if not self.use_chat_completion_api:
             raise NotImplementedError
+        
         try:
-            agent_action = await self._invoke_agent_action_async(query)  
-            self.messages.append(agent_action) # This must be here
-            try:
-                Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
-            except Exception as e:
-                _, Action = await self._parsing_Thought_and_Action_into_str_async(agent_action['tool_calls'])
-                Observation = f'(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception. The error message is "{e}".'
-                temp_scratchpad = Action+'\n'+Observation+'\n'
+            agent_action = await self._invoke_agent_action_async(query)
+            await self.append_messages_async(agent_action) # This must be here
         except Exception as e:
             agent_action = await self._invoke_agent_action_for_exception_async(e)
-            self.messages.append(agent_action) # This must be here
+            await self.append_messages_async(agent_action) # This must be here
             Observation, temp_scratchpad = await self._func_execution_for_exception_async(e)
+        
+        Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
+        
         
         self.agent_log += temp_scratchpad
         done = True if Observation[:8]=='Answer: ' else False 
         return agent_action, Observation, done       
 
-    @retry(allowed_exceptions=(RateLimitError,), return_message="Unexpected Exception has been raised.")
+    @retry(allowed_exceptions=(RateLimitError,), return_message="Successfully got a tool to invoke but could not invoke it due to Exception.")
     def _get_function_observation(self, tool, tool_input):
         return self.tool_dictionary[tool].run(**tool_input)
 
-    @retry(allowed_exceptions=(RateLimitError,), return_message="Unexpected Exception has been raised.")
+    async def _get_function_observation_a(self, tool, tool_input):
+        return self._get_function_observation(tool=tool, tool_input=tool_input)
+
     async def _get_function_observation_async(self, tool, tool_input):
-        invocation_result = await self.tool_dictionary[tool].arun(**tool_input)
+        invocation_result = await self._get_function_observation_a(tool=tool, tool_input=tool_input)
         return invocation_result
 
 
@@ -162,15 +187,17 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
         Thought_Action = Thought+'\n'+Action if Thought != '' else Action
         if tool_calls:
             
-            ### 이부분 순서가 섞일 수 있음. for 문으로 수정
             tasks = await asyncio.gather(*[self._get_function_observation_async(tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls])
             observations = [(tool_call.id, tool_call.function.name, task) for task, tool_call in zip(tasks, tool_calls)]
+            tool_messages = await self.parsing_to_tool_msg_dict_parser_async(observations)     
+            self.messages += tool_messages
+
             are_all_tools_excpetion = await self.are_all_tools_excpetion(observations)
             if not are_all_tools_excpetion:
                 Observation_loglevel = 'info'
-            tool_messages = await self.parsing_to_tool_msg_dict_parser(observations)     
-            self.messages += tool_messages
-            Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
+                Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
+            else: 
+                Observation = f'(step {self.timestep+1}-observation) {self.observation_word[-1]}: Successfully got a list of tools to invoke but could not invoke them due to Exception.'
         else:
             Observation_loglevel = 'info'
             Observation = f"Answer: {(agent_action['content']).strip()}" 
@@ -183,18 +210,20 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
 
 
     #### _func_execution_for_exception #### 
-    def _func_execution_for_exception(self, e: Optional[str]=None) :              
-        Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not invoke any tools because of the unexpected Exception. The error message is "{e}".' 
-        self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
-        Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any tool-invocation results because of the unexpected Exception."
-        self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))
+    def _func_execution_for_exception(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)) :              
+        Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not get any response from the Brain (LLM) due to Exception. The error message is "{e}".' 
+        if collect_logs[0]:
+            self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
+        Observation = f'(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any list of tool to invoke due to Exception. The error message is "{e}".'
+        if collect_logs[1]:
+            self.collect_logs(Observation, (True, 'error'), (True, 'error'), (True, 'error'))
         return Observation, Action+'\n'+Observation+'\n'
     
-    async def _func_execution_for_exception_a(self, e: Optional[str]=None) :      
-        return self._func_execution_for_exception(e)
+    async def _func_execution_for_exception_a(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)):      
+        return self._func_execution_for_exception(e, collect_logs=collect_logs)
 
-    async def _func_execution_for_exception_async(self, e: Optional[str]=None) :    
-        Observation, temp_scratchpad = await self._func_execution_for_exception_a(e)
+    async def _func_execution_for_exception_async(self, e: Optional[str]=None, collect_logs:Tuple[bool, bool]=(True, True)) :    
+        Observation, temp_scratchpad = await self._func_execution_for_exception_a(e, collect_logs=collect_logs)
         return Observation, temp_scratchpad 
 
 
@@ -208,6 +237,13 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
+    async def _before_agent_episode_a(self, query: Optional[str]=None, reference: Optional[str]=None):
+        self._before_agent_episode(query=query, reference=reference)
+
+
+    async def _before_agent_episode_async(self, query: Optional[str]=None, reference: Optional[str]=None):
+        await self._before_agent_episode_a(query=query, reference=reference)
+
 
 
 
@@ -218,24 +254,33 @@ class OpenAIParallelFuntionCallingAgent(BaseCustomAgent):
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
+    async def _before_agent_trials_a(self, query: Optional[str]=None, reference: Optional[str]=None):
+        self._before_agent_trials(query=query, reference=reference)
+    
+    async def _before_agent_trials_async(self, query: Optional[str]=None, reference: Optional[str]=None):
+        await self._before_agent_trials_a(query=query, reference=reference)
+
+
+
     #### _parsing_Thought_and_Action_into_str #### 
-    def _parsing_Thought_and_Action_into_str(self, tool_calls:str)-> Tuple[str, str]:
+    def _parsing_Thought_and_Action_into_str(self, tool_calls:str, collect_logs=True)-> Tuple[str, str]:
         Action_loglevel = 'error'
         try:    
             Action = self._parsing_action_into_str(tool_calls)
             Action_loglevel = 'info'
         except Exception as e:
-            Action = f'(step {self.timestep+1}-1) {self.action_word[:-1]}: Failed to parse Action into str. The error message is "{e}".'
-        self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
+            Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Successfully got a list of tools to invoke but could not parse them into string format due to parsing error. The error message is "{e}".'
+        if collect_logs:
+            self.collect_logs(Action, (True, Action_loglevel), (True, Action_loglevel), (True, Action_loglevel))
         
         return '', Action 
 
-    async def _parsing_Thought_and_Action_into_str_a(self, tool_calls:str)-> Tuple[str, str]:   
-        _, Action = self._parsing_Thought_and_Action_into_str(tool_calls) 
+    async def _parsing_Thought_and_Action_into_str_a(self, tool_calls:str, collect_logs=True)-> Tuple[str, str]:   
+        _, Action = self._parsing_Thought_and_Action_into_str(tool_calls, collect_logs=collect_logs) 
         return '', Action
     
-    async def _parsing_Thought_and_Action_into_str_async(self, tool_calls:str)-> Tuple[str, str]:
-        _, Action = await self._parsing_Thought_and_Action_into_str_a(tool_calls)
+    async def _parsing_Thought_and_Action_into_str_async(self, tool_calls:str, collect_logs=True)-> Tuple[str, str]:
+        _, Action = await self._parsing_Thought_and_Action_into_str_a(tool_calls, collect_logs=collect_logs)
         
         return '', Action 
 

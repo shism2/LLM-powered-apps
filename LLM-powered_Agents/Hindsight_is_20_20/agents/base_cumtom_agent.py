@@ -226,7 +226,7 @@ class BaseCustomAgent:
         
         while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
             self.collect_logs(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
-            self.run_agent_episode(query=query, reference=reference, trial=self.trial)  
+            self.run_agent_episode(query=query, reference=reference, trial=self.trial, single_episode=False)  
             self.trial += 1
 
 
