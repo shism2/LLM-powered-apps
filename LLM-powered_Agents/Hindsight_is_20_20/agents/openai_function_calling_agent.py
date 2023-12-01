@@ -39,7 +39,6 @@ class MyAIMessageToAgentActionParser(JsonOutputToolsParser):
             return AgentActionMessageLog(log=log, tool=function["name"], tool_input=function["args"], message_log=[generation])
 
 
-
 class OpenAIFuntionCallingAgent(BaseCustomAgent):
     @property
     def is_reflexion_agent(self):
@@ -69,7 +68,7 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
         self.openai_functions = [format_tool_to_openai_function(f) for f in self.tools]
 
 
-
+    ''' <<< Invoke Brain >>> '''
     def _invoke_agent_action_for_exception(self, e: Optional[str]=None):
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
         return AgentActionMessageLog(
@@ -77,8 +76,10 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
                 tool='',
                 tool_input='',
                 type = 'AgentActionMessageLog')
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
+    ''' <<< Parsing into string >>>'''
     def _parsing_action_into_str(self, raw_action_string:str)-> str:
         try:
             if self.contains_word(raw_action_string, self.action_word):
@@ -91,3 +92,4 @@ class OpenAIFuntionCallingAgent(BaseCustomAgent):
         except Exception as e:
             raise Exception(e)
         return Action
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

@@ -28,7 +28,6 @@ class ReActAgent(BaseCustomAgent):
             )
         return prompt
 
-
     @property
     def brain(self)-> Any:
 
@@ -67,7 +66,6 @@ class ReActAgent(BaseCustomAgent):
             ai_message_chunk.content = fixed_str        
             return ai_message_chunk 
 
-
         brain = (
             RunnablePassthrough.assign(agent_scratchpad  = lambda x: self._parsing_intermediate_steps_into_str(x["intermediate_steps"]),) 
             | self.base_prompt
@@ -82,6 +80,12 @@ class ReActAgent(BaseCustomAgent):
             super().__init__(**kwargs)
 
 
+    ''' <<< Parsing into string >>>'''
+    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
+        return format_log_to_str(intermediate_steps)
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    
+
     def _tool_description_for_system_msg_(self, schemas: List[Type[BaseModel]], tools: List[Tool])->str:
         """adapted from langchain's render_text_description_and_args """
         tool_strings = []
@@ -89,12 +93,7 @@ class ReActAgent(BaseCustomAgent):
             tool_strings.append(f"{tool.name}: {tool.description}, args: {str(schema.schema()['properties'])}")
         return "\n".join(tool_strings)
 
- 
 
-
-    ''' Define parsing function of intermediate steps : OVERRIDE'''
-    def _parsing_intermediate_steps_into_str(self, intermediate_steps: List[Tuple[AgentAction, str]])-> None:
-        return format_log_to_str(intermediate_steps)
 
 
 
