@@ -113,12 +113,6 @@ class BaseAgent(ABC):
         self.before_agent_trials(reference='Instance initialization')
 
 
-<<<<<<< HEAD
-
-
-    ####################### Fundamental methods #######################
-=======
->>>>>>> temp_1125
     def agent_reset(self):
         self.before_agent_episode()
         self.before_agent_trials(reference='Instance initialization')
