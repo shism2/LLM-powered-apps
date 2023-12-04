@@ -33,7 +33,6 @@ class OpenAIParallelAgent(BaseAgent):
         raise NotImplementedError 
 
 
-
     def __init__(self, use_chat_completion_api:bool=False, azure_apenai_client: Optional=None, **kwargs):        
         self.use_chat_completion_api = use_chat_completion_api
         super().__init__(**kwargs)
@@ -57,7 +56,7 @@ class OpenAIParallelAgent(BaseAgent):
     async def _populate_user_message_async(self, query):
         self.messages[1]= {'role':'user', 'content':self.base_human_prompt.format_messages(input=query)[0].content}  
         
-    async def _invoke_agent_action_async(self, query):
+    async def invoke_agent_action_async(self, query):
         if not self.use_chat_completion_api:
             raise NotImplementedError
                  
@@ -70,7 +69,7 @@ class OpenAIParallelAgent(BaseAgent):
                 FLAG = False
             except RateLimitError as e:
                 wait_time = get_waiting_time(e)
-                print(f"RateLimitError for {self._invoke_agent_action_async.__name__}. -----> Will automatically retry {wait_time} seconds later.")
+                print(f"RateLimitError for {self.invoke_agent_action_async.__name__}. -----> Will automatically retry {wait_time} seconds later.")
                 for s in range(wait_time, 0, -1):
                     print(s, end=' ')
                     await asyncio.sleep(1) 
@@ -78,7 +77,7 @@ class OpenAIParallelAgent(BaseAgent):
         return chat_response 
 
     def invoke_agent_action_for_exception(self, e: Optional[str]=None):
-        ''' Suppoer Acync by appending _async '''
+        ''' Automatic Acync-support by appending _async '''
         if not self.use_chat_completion_api:
             raise NotImplementedError        
         log = f'Unexpected Exception has been raised. The error message is "{e}"' if e != None else 'Unexpected Exception has been raised.'
@@ -87,7 +86,7 @@ class OpenAIParallelAgent(BaseAgent):
 
 
     ''' <<< run_agent_step >>> '''
-    async def _agent_step_async(self, query: str):
+    async def agent_step_async(self, query: str):
         """
         In Reinforcement-learning context, 'agent_step' method takes in 's' as input and returns 'a'.
         Here, the 'query', 'agent_action', and 'Observation' act as 's', 'a' and 's_prime', respectively.
@@ -98,7 +97,7 @@ class OpenAIParallelAgent(BaseAgent):
         
         try:
             ''' Invoke Brain (LLM) '''
-            agent_action = await self._invoke_agent_action_async(query)
+            agent_action = await self.invoke_agent_action_async(query)
             await self._append_messages_async(agent_action) # This must be here
         except Exception as e:
             """ Exception to Brain (LLM) """
@@ -106,21 +105,21 @@ class OpenAIParallelAgent(BaseAgent):
             await self._append_messages_async(agent_action) # This must be here
             Observation, temp_scratchpad = await self.func_execution_for_exception_async(e)        
         ''' No Exception to Brain (LLM) '''
-        Observation, temp_scratchpad = await self._func_execution_async(agent_action=agent_action)
+        Observation, temp_scratchpad = await self.func_execution_async(agent_action=agent_action)
         
         self.agent_log += temp_scratchpad
         is_termination_state = True if Observation[:8]=='Answer: ' else False 
-        return agent_action, Observation, is_termination_state       
+        return agent_action, Observation, is_termination_state  
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< tool invocation >>> '''
     @retry(allowed_exceptions=(RateLimitError,), return_message="Successfully got a tool to invoke but could not invoke it due to Exception.")
     def get_function_observation(self, tool, tool_input):
-        ''' Suppost Async by appending _async'''
+        ''' Automatic Acync-support by appending _async '''
         return self.tool_dictionary[tool].run(**tool_input)
 
-    async def _func_execution_async(self, agent_action)-> Tuple[str,str]:
+    async def func_execution_async(self, agent_action)-> Tuple[str,str]:
         if not self.use_chat_completion_api:
             raise NotImplementedError
         
@@ -135,7 +134,7 @@ class OpenAIParallelAgent(BaseAgent):
             tool_messages = await self.parsing_to_tool_msg_dict_parser_async(observations)     
             self.messages += tool_messages
 
-            are_all_tools_excpetion = await self._are_all_tools_excpetion(observations)
+            are_all_tools_excpetion = await self.are_all_tools_excpetion(observations)
             if not are_all_tools_excpetion:
                 Observation_loglevel = 'info'
                 Observation = f"(step {self.timestep+1}-observation) {self.observation_word[-1]}: [" + ', '.join( [f'Tool {i+1}-> '+(x['content'].strip()) for i, x in enumerate(tool_messages)]  ) + ']'
@@ -150,7 +149,7 @@ class OpenAIParallelAgent(BaseAgent):
 
 
     def func_execution_for_exception(self, e: Optional[str]=None) :  
-        ''' Suppost Async by appending _async'''            
+        ''' Automatic Async-support by appending _async '''          
         Action = f'(step {self.timestep+1}-action) {self.action_word[:-1]}: Could not get any response from the Brain (LLM) due to Exception. The error message is "{e}".' 
         self.collect_logs(Action, (True, 'error'), (True, 'error'), (True, 'error'))
         Observation = f'(step {self.timestep+1}-observation) {self.observation_word[-1]}: Could not get any list of tool to invoke due to Exception. The error message is "{e}".'
@@ -167,7 +166,7 @@ class OpenAIParallelAgent(BaseAgent):
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
-    async def _run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=True)-> None:    
+    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=True)-> None:    
         await self.before_agent_episode_async(query=query, reference=reference)
         self.agent_log += f"Qurey: {query}\n"
         if single_episode:
@@ -178,7 +177,7 @@ class OpenAIParallelAgent(BaseAgent):
             await self.collect_logs_async(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.a, self.s_prime, self.is_termination_state  = await self._agent_step_async(query)       
+            self.a, self.s_prime, self.is_termination_state  = await self.agent_step_async(query)       
             self.done = True if (self.is_termination_state) or (self.is_halted(self.timestep)) else False
 
             if not self.done:
@@ -194,32 +193,30 @@ class OpenAIParallelAgent(BaseAgent):
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
-
-
     ''' <<< run_agent_trials >>> '''
     def before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
-        ''' Suppost Async by appending _async'''
+        ''' Automatic Async-support by appending _async ''' 
         super().before_agent_trials(query=query, reference=reference)
         if self.use_chat_completion_api:
             self.messages = []
             self.messages.append({'role':'system', 'content':self.base_system_prompt.prompt.template})
             self.messages.append({'role':'user', 'content':''})
 
-    async def _run_agent_trials_async(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
+    async def run_agent_trials_async(self, query: str,reference: Optional[str]=None, num_trials: int=2)-> None:
         await self.before_agent_trials_async(query=query, reference=reference)
         await self.collect_logs_async(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
         await self.collect_logs_async(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
         
         while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
             await self.collect_logs_async(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
-            await self._run_agent_episode_async(query=query, reference=reference, trial=self.trial, single_episode=False)  
+            await self.run_agent_episode_async(query=query, reference=reference, trial=self.trial, single_episode=False)  
             self.trial += 1
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< Parsing into string >>> '''
     def parsing_Thought_and_Action_into_str(self, tool_calls: List[Dict])-> Tuple[str, str]:
-        ''' Support Async by appending _async '''
+        ''' Automatic Async-support by appending _async ''' 
         Action_loglevel = 'error'
         try:    
             Action = self.parsing_action_into_str(tool_calls)

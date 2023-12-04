@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema.agent import AgentAction, AgentFinish
-from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.agents.output_parsers import JSONAgentOutputParser
 from langchain.agents import Tool
 from langchain.agents.format_scratchpad.log import format_log_to_str
@@ -16,6 +16,7 @@ from openai import RateLimitError
 import time
 from utils.wrappers import retry
 from abc import ABC, abstractmethod
+from langchain_core.runnables.base import Runnable
 
 
 
@@ -23,22 +24,36 @@ from abc import ABC, abstractmethod
 class BaseAgent(ABC):
     @property
     def is_reflexion_agent(self):
-        return False
+        raise NotImplementedError
 
     @property
     def base_prompt(self)-> ChatPromptTemplate:
-        ''' Override this property for any child class '''
         raise NotImplementedError
 
     @base_prompt.setter
     def base_prompt(self, new_prompt: ChatPromptTemplate)-> None:
-        ''' Override this property for any child class '''
         raise NotImplementedError    
 
     @property
     def brain(self)-> Any:
-        ''' Override this property for any child class '''
         raise NotImplementedError
+
+    @property
+    def runnable_agent_step(self)->Runnable:
+        return RunnableLambda( func=self.agent_step, afunc=self.agent_step_async )
+    
+
+    @property
+    def runnable_agent_episode(self)->Runnable:
+        runnable = RunnableLambda( func=self.run_agent_episode, afunc=self.run_agent_episode_async  )
+        return runnable
+
+    @property
+    def runnable_agent_trial(self)->Runnable:
+        runnable = RunnableLambda( func=self.run_agent_trials, afunc=self.run_agent_trials_async )
+        return runnable
+
+
 
 
     def __init__(self,
@@ -108,6 +123,10 @@ class BaseAgent(ABC):
         self.a = None
         self.s_prime = ''
 
+
+
+
+
         # agent_reset
         self.before_agent_episode()
         self.before_agent_trials(reference='Instance initialization')
@@ -140,6 +159,7 @@ class BaseAgent(ABC):
         self.collect_logs(message=message, console=console, e2e=e2e, trajectory=trajectory)
     
     async def collect_logs_async(self, message: str, console: Tuple[bool, str], e2e: Tuple[bool, str], trajectory: Tuple[bool, str]):
+        ''' Automatic Async-support by appending _async '''  
         await self.collect_logs_a(message=message, console=console, e2e=e2e, trajectory=trajectory)
 
     def get_logger_name_prefix(self):
@@ -185,8 +205,17 @@ class BaseAgent(ABC):
                 'input': query
             })
 
+    async def invoke_agent_action_a(self, query):
+        raise NotImplementedError
+    
+    async def invoke_agent_action_async(self, query):
+        result = await self.invoke_agent_action_a(query=query)
+        raise NotImplementedError
+
+
+
     def invoke_agent_action_for_exception(self, e: Optional[str]=None):
-        ''' Suppoer Acync by appending _async '''
+        ''' Automatic Acync-support by appending _async '''
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
         log += '\nAction:\n```\n{\n"action": "",\n"action_input": ""\n}\n```'
         return AgentAction(
@@ -206,7 +235,6 @@ class BaseAgent(ABC):
 
     ''' <<< run_agent_step >>> '''
     def before_agent_step(self):
-        ''' Override this property for any child class IF NECESSARY'''
         pass
 
 
@@ -230,13 +258,16 @@ class BaseAgent(ABC):
         self.agent_log += temp_scratchpad
         is_termination_state = True if isinstance(agent_action, AgentFinish) else False 
         return agent_action, Observation, is_termination_state       
+
+    async def agent_step_async(self, query: str):
+        raise NotImplementedError
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< tool invocation >>> '''
     @retry(allowed_exceptions=(RateLimitError,))
     def get_function_observation(self, tool, tool_input):
-        ''' Suppost Async by appending _async'''
+        ''' Automatic Acync-support by appending _async '''
         return self.tool_dictionary[tool].run(**tool_input)
 
     async def get_function_observation_a(self, tool, tool_input):
@@ -273,10 +304,13 @@ class BaseAgent(ABC):
         self.collect_logs(Observation, (True, Observation_loglevel), (True, Observation_loglevel), (True, Observation_loglevel))
         return Observation, Thought_Action+'\n'+Observation+'\n'
 
+    async def func_execution_async(self, agent_action: AgentAction|AgentFinish|Literal['NO_NEED'])-> Tuple[str,str]:
+        raise NotImplementedError
+
 
 
     def func_execution_for_exception(self, e: Optional[str]=None) :        
-        ''' Suppost Async by appending _async'''
+        ''' Automatic Async-support by appending _async ''' 
         log = f'Exception raised. Neither AgentAction nor AgentFinish is produced. The error message is "{e}"' if e != None else 'Exception raised. Neither AgentAction nor AgentFinish is produced.'
          
         Thought = f'{self.thought_word[:-1]} {self.timestep+1}: '+log if self.thought_word!=None else ''
@@ -300,7 +334,7 @@ class BaseAgent(ABC):
         Observation, temp_scratchpad = await self.func_execution_for_exception_a(e, collect_logs=collect_logs)
         return Observation, temp_scratchpad 
 
-    async def _are_all_tools_excpetion(self, observations:List):
+    async def are_all_tools_excpetion(self, observations:List):
         return sum([ self.contains_word(x[2], 'Exception') for x in observations]) == len(observations)        
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -348,14 +382,13 @@ class BaseAgent(ABC):
             self.collect_logs(f"Query: {query}", (False, 'info'), (False, 'info'), (True, 'info'))
         
         while not self.done:
-            self.a, self.s_prime, self.is_termination_state  = self.agent_step(query)   
+            self.a, self.s_prime, self.is_termination_state  = self.runnable_agent_step.invoke(query)
             if not self.is_termination_state:  
                 self.intermediate_steps.append((self.a, self.s_prime))            
             
             self.done = True if (self.is_termination_state) or (self.is_halted(self.timestep)) else False
             if not self.done:
                 self.timestep += 1
-
 
         # assessment the output
         if not self.is_halted(self.timestep):
@@ -364,12 +397,18 @@ class BaseAgent(ABC):
             self.prediction = "HALTED"
         self.judgement = self.assessment()
         self.add_judgement_to_agent_log()
+        
+        return self.s_prime  # Not necessary but for LangSmith
+
+
+    async def run_agent_episode_async(self, query: str, reference: Optional[str]=None, trial: int=0, single_episode=False)-> None:
+        raise NotImplementedError   
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
     ''' <<< run_agent_trials >>> '''
     def before_agent_trials(self, query: Optional[str]=None, reference: Optional[str]=None):
-        ''' Suppost Async by appending _async'''
+        ''' Automatic Async-support by appending _async ''' 
         if self.is_reflexion_agent:
             self.reflexion_reset()
             if reference==None:            
@@ -383,15 +422,20 @@ class BaseAgent(ABC):
     async def before_agent_trials_async(self, query: Optional[str]=None, reference: Optional[str]=None):
         await self.before_agent_trials_a(query=query, reference=reference)
 
-    def run_agent_trials(self, num_trials: int, query: str, reference: Optional[str]=None)-> None:
+
+    def run_agent_trials(self, query: str, reference: Optional[str]=None, num_trials: int=2)-> None:
         self.before_agent_trials(query=query, reference=reference)
         self.collect_logs(f"----- New test point -----", (False, 'info'), (True, 'info'), (True, 'info'))
         self.collect_logs(f"Query: {query}", (True, 'info'), (True, 'info'), (False, 'info'))
         
         while self.judgement[1]!='CORRECT' and self.trial<num_trials:  
             self.collect_logs(f"Trial {self.trial+1}", (True, 'info'), (True, 'info'), (False, 'info'))
-            self.run_agent_episode(query=query, reference=reference, trial=self.trial, single_episode=False)  
+            episode_result = self.runnable_agent_episode.invoke(input=query, **{'reference':reference, 'trial':self.trial, 'single_episode':False})  
             self.trial += 1
+        return episode_result # Not necessary but for LangSmith
+
+    async def run_agent_trials_async(self, query: str, reference: Optional[str]=None, num_trials: int=2)-> None:
+        raise NotImplementedError
     ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
@@ -408,7 +452,7 @@ class BaseAgent(ABC):
         raise NotImplementedError
 
     def parsing_Thought_and_Action_into_str(self, data)-> Tuple[str, str]:
-        ''' Support Async by appending _async '''
+        ''' Automatic Async-support by appending _async ''' 
         Thought_loglevel = 'error'
         Action_loglevel = 'error'
         if self.thought_word!=None:
